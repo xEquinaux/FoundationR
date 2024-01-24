@@ -26,6 +26,7 @@ namespace FoundationR
         public Foundation()
         {
             type = SurfaceType.Automatic;
+            InitializeComponent();
         }
         public Foundation(Image wpfImage)
         {
@@ -39,7 +40,6 @@ namespace FoundationR
         }
         public void Run(SurfaceType type)
         {
-            InitializeComponent();
             switch (type)
             {
                 case SurfaceType.Automatic:
