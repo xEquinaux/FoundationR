@@ -22,26 +22,37 @@ namespace FoundationR
     {
         [DllImport("user32.dll", SetLastError = true)]
         static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+        [DllImport("user32.dll", EntryPoint = "FindWindow", SetLastError = true)]
+        static extern IntPtr FindWindowByCaption(IntPtr ZeroOnly, string lpWindowName);
+        [DllImport("gdi32.dll")]
+        static extern bool DeleteObject(IntPtr hObject);
+        [DllImport("user32.dll")]  
+        static extern IntPtr GetDCEx(IntPtr hWnd, IntPtr hrgnClip, uint flags);
+        [DllImport("user32.dll")]
+        static extern IntPtr GetWindowDC(IntPtr hWnd);
 
         bool flag = true, flag2 = true, init;
         public static int offX, offY;
         public static Rectangle bounds;
         public static Camera? viewport;
         static BufferedGraphicsContext context = BufferedGraphicsManager.Current;
-        Form CreateForm(Surface surface)
+
+        internal class SurfaceForm : Form
         {
-            Form form = new Form();
-            form.TransparencyKey = System.Drawing.Color.CornflowerBlue;
-            form.BackColor = System.Drawing.Color.CornflowerBlue;
-            form.FormBorderStyle = FormBorderStyle.None;
-            form.Width = surface.Width;
-            form.Height = surface.Height;
-            form.Location = new Point(surface.X, surface.Y);
-            form.Text = surface.Title;
-            form.Name = surface.Title;
-            surface.form = form;
-            return form;
+            internal SurfaceForm(Surface surface)
+            {
+                //form.TransparencyKey = System.Drawing.Color.CornflowerBlue;
+                BackColor = System.Drawing.Color.CornflowerBlue;
+                FormBorderStyle = FormBorderStyle.None;
+                Width = surface.Width;
+                Height = surface.Height;
+                Location = new Point(surface.X, surface.Y);
+                Text = surface.Title;
+                Name = surface.Title;
+                DoubleBuffered = true;
+            }
         }
+
         void RegisterHooks()
         {
             ResizeEvent += (s, e) => ResizeWindow();
@@ -74,10 +85,10 @@ namespace FoundationR
                                 SetQuality(buffered.Graphics, new System.Drawing.Rectangle(0, 0, bounds.Width, bounds.Height));
                                 g.Clear(System.Drawing.Color.CornflowerBlue);
                                 ResizeEvent.Invoke(this, new EventArgs());
-                                MainMenuEvent.Invoke(this, new DrawingArgs() { graphics = buffered.Graphics });
-                                PreDrawEvent.Invoke(this, new PreDrawArgs() { graphics = buffered.Graphics });
-                                DrawEvent.Invoke(this, new DrawingArgs() { graphics = buffered.Graphics });
-                                CameraEvent.Invoke(this, new CameraArgs() { graphics = buffered.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
+                                MainMenuEvent.Invoke(this, new DrawingArgs() { graphics = g });
+                                PreDrawEvent.Invoke(this, new PreDrawArgs() { graphics = g });
+                                DrawEvent.Invoke(this, new DrawingArgs() { graphics = g });
+                                CameraEvent.Invoke(this, new CameraArgs() { graphics = g, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
                                 buffered.Render();
                             }
                         }
@@ -108,34 +119,33 @@ namespace FoundationR
         }
         internal void Run(Dispatcher dispatcher, Surface window)
         {
-            Form form = this.CreateForm(window);
+            Form form = new SurfaceForm(window);
             this.RegisterHooks();
             new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => draw(ref flag, window), dispatcher).Start();
             update(ref flag2);
             void draw(ref bool taskDone, Surface surface)
             {
                 if (taskDone)
-                { 
+                {
                     taskDone = false;
                     int width = (int)surface.Width;
                     int height = (int)surface.Height;
-                    using (Bitmap bmp = Bitmap.FromHbitmap(FindWindow("", window.Title)))
+                    IntPtr HDC = GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403);
+                    using (Graphics g = Graphics.FromHdc(HDC))
                     {
-                        using (Graphics g = Graphics.FromImage(bmp))
+                        using (BufferedGraphics b = context.Allocate(g, new Rectangle(0, 0, width, height)))
                         {
-                            using (BufferedGraphics buffered = context.Allocate(g, new Rectangle(0, 0, bounds.Width, bounds.Height)))
-                            {
-                                SetQuality(buffered.Graphics, new System.Drawing.Rectangle(0, 0, bounds.Width, bounds.Height));
-                                g.Clear(System.Drawing.Color.CornflowerBlue);
-                                ResizeEvent     .Invoke(this, new EventArgs());
-                                MainMenuEvent   .Invoke(this, new DrawingArgs() { graphics = buffered.Graphics });
-                                PreDrawEvent    .Invoke(this, new PreDrawArgs() { graphics = buffered.Graphics });
-                                DrawEvent       .Invoke(this, new DrawingArgs() { graphics = buffered.Graphics });
-                                CameraEvent     .Invoke(this, new CameraArgs() { graphics = buffered.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
-                                buffered.Render();
-                            }
+                            SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
+                            b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
+                            ResizeEvent     .Invoke(this, new EventArgs());
+                            MainMenuEvent   .Invoke(this, new DrawingArgs() { graphics = b.Graphics });
+                            PreDrawEvent    .Invoke(this, new PreDrawArgs() { graphics = b.Graphics });
+                            DrawEvent       .Invoke(this, new DrawingArgs() { graphics = b.Graphics });
+                            CameraEvent     .Invoke(this, new CameraArgs()  { graphics = b.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
+                            b.Render();
                         }
                     }
+                    DeleteObject(HDC);
                     taskDone = true;
                 }
             }
@@ -155,7 +165,7 @@ namespace FoundationR
                 }
                 dispatcher.BeginInvoke(() => update(ref flag2), DispatcherPriority.Background, null);
             }
-            form.Show();
+            form.ShowDialog();
         }
         #region events
         public static event EventHandler<EventArgs> ResizeEvent;
