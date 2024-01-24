@@ -23,7 +23,7 @@ namespace FoundationR
         [DllImport("user32.dll", SetLastError = true)]
         static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
 
-        bool flag, flag2, init;
+        bool flag = true, flag2 = true, init;
         public static int offX, offY;
         public static Rectangle bounds;
         public static Camera? viewport;
@@ -56,40 +56,38 @@ namespace FoundationR
         internal void Run(Dispatcher dispatcher, Image surface)
         {
             this.RegisterHooks();
-            DispatcherTimer timer = new DispatcherTimer(DispatcherPriority.Render, dispatcher);
-            DispatcherTimer timer2 = new DispatcherTimer(DispatcherPriority.Normal, dispatcher);
-            timer.Tick += (s, e) => draw(ref flag, surface);
-            timer2.Tick += (s, e) => update(ref flag2);
-            timer.Start();
-            timer2.Start();
+            new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => draw(ref flag, surface), dispatcher).Start();
+            update(ref flag2);
             void draw(ref bool taskDone, Image surface)
             {
-                if (!taskDone) return;
-                taskDone = false;
-                int width = (int)surface.Width;
-                int height = (int)surface.Height;
-                using (Bitmap bmp = new Bitmap(width, height))
-                {
-                    using (Graphics g = Graphics.FromImage(bmp))
+                if (taskDone)
+                { 
+                    taskDone = false;
+                    int width = (int)surface.Width;
+                    int height = (int)surface.Height;
+                    using (Bitmap bmp = new Bitmap(width, height))
                     {
-                        using (BufferedGraphics buffered = context.Allocate(g, new Rectangle(0, 0, bounds.Width, bounds.Height)))
+                        using (Graphics g = Graphics.FromImage(bmp))
                         {
-                            SetQuality(buffered.Graphics, new System.Drawing.Rectangle(0, 0, bounds.Width, bounds.Height));
-                            g.Clear(System.Drawing.Color.CornflowerBlue);
-                            ResizeEvent.Invoke(this, new EventArgs());
-                            MainMenuEvent.Invoke(this, new DrawingArgs() { graphics = buffered.Graphics });
-                            PreDrawEvent.Invoke(this, new PreDrawArgs() { graphics = buffered.Graphics });
-                            DrawEvent.Invoke(this, new DrawingArgs() { graphics = buffered.Graphics });
-                            CameraEvent.Invoke(this, new CameraArgs() { graphics = buffered.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
-                            buffered.Render();
+                            using (BufferedGraphics buffered = context.Allocate(g, new Rectangle(0, 0, bounds.Width, bounds.Height)))
+                            {
+                                SetQuality(buffered.Graphics, new System.Drawing.Rectangle(0, 0, bounds.Width, bounds.Height));
+                                g.Clear(System.Drawing.Color.CornflowerBlue);
+                                ResizeEvent.Invoke(this, new EventArgs());
+                                MainMenuEvent.Invoke(this, new DrawingArgs() { graphics = buffered.Graphics });
+                                PreDrawEvent.Invoke(this, new PreDrawArgs() { graphics = buffered.Graphics });
+                                DrawEvent.Invoke(this, new DrawingArgs() { graphics = buffered.Graphics });
+                                CameraEvent.Invoke(this, new CameraArgs() { graphics = buffered.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
+                                buffered.Render();
+                            }
                         }
+                        int stride = width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
+                        var data = bmp.LockBits(new System.Drawing.Rectangle(0, 0, width, height), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                        surface.Source = BitmapSource.Create(width, height, 96f, 96f, PixelFormats.Bgr24, null, data.Scan0, stride * height, stride);
+                        bmp.UnlockBits(data);
                     }
-                    int stride = width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
-                    var data = bmp.LockBits(new System.Drawing.Rectangle(0, 0, width, height), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-                    surface.Source = BitmapSource.Create(width, height, 96f, 96f, PixelFormats.Bgr24, null, data.Scan0, stride * height, stride);
-                    bmp.UnlockBits(data);
+                    taskDone = true;
                 }
-                taskDone = true;
             }
             void update(ref bool taskDone)
             {
@@ -99,46 +97,47 @@ namespace FoundationR
                     LoadResourcesEvent.Invoke(this, new EventArgs());
                     InitializeEvent.Invoke(this, new InitializeArgs());
                 }
-                if (!taskDone) return;
-                taskDone = false;
-                UpdateEvent.Invoke(this, new UpdateArgs());
-                taskDone = true;
+                if (taskDone)
+                { 
+                    taskDone = false;
+                    UpdateEvent.Invoke(this, new UpdateArgs());
+                    taskDone = true;
+                }
+                dispatcher.BeginInvoke(() => update(ref flag2), DispatcherPriority.Background, null);
             }
         }
         internal void Run(Dispatcher dispatcher, Surface window)
         {
-            this.CreateForm(window);
+            Form form = this.CreateForm(window);
             this.RegisterHooks();
-            DispatcherTimer timer = new DispatcherTimer(DispatcherPriority.Render, dispatcher);
-            DispatcherTimer timer2 = new DispatcherTimer(DispatcherPriority.Normal, dispatcher);
-            timer.Tick += (s, e) => draw(ref flag, window);
-            timer2.Tick += (s, e) => update(ref flag2);
-            timer.Start();
-            timer2.Start();
+            new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => draw(ref flag, window), dispatcher).Start();
+            update(ref flag2);
             void draw(ref bool taskDone, Surface surface)
             {
-                if (!taskDone) return;
-                taskDone = false;
-                int width = (int)surface.Width;
-                int height = (int)surface.Height;
-                using (Bitmap bmp = Bitmap.FromHbitmap(FindWindow("", window.Title)))
-                {
-                    using (Graphics g = Graphics.FromImage(bmp))
+                if (taskDone)
+                { 
+                    taskDone = false;
+                    int width = (int)surface.Width;
+                    int height = (int)surface.Height;
+                    using (Bitmap bmp = Bitmap.FromHbitmap(FindWindow("", window.Title)))
                     {
-                        using (BufferedGraphics buffered = context.Allocate(g, new Rectangle(0, 0, bounds.Width, bounds.Height)))
+                        using (Graphics g = Graphics.FromImage(bmp))
                         {
-                            SetQuality(buffered.Graphics, new System.Drawing.Rectangle(0, 0, bounds.Width, bounds.Height));
-                            g.Clear(System.Drawing.Color.CornflowerBlue);
-                            ResizeEvent     .Invoke(this, new EventArgs());
-                            MainMenuEvent   .Invoke(this, new DrawingArgs() { graphics = buffered.Graphics });
-                            PreDrawEvent    .Invoke(this, new PreDrawArgs() { graphics = buffered.Graphics });
-                            DrawEvent       .Invoke(this, new DrawingArgs() { graphics = buffered.Graphics });
-                            CameraEvent     .Invoke(this, new CameraArgs() { graphics = buffered.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
-                            buffered.Render();
+                            using (BufferedGraphics buffered = context.Allocate(g, new Rectangle(0, 0, bounds.Width, bounds.Height)))
+                            {
+                                SetQuality(buffered.Graphics, new System.Drawing.Rectangle(0, 0, bounds.Width, bounds.Height));
+                                g.Clear(System.Drawing.Color.CornflowerBlue);
+                                ResizeEvent     .Invoke(this, new EventArgs());
+                                MainMenuEvent   .Invoke(this, new DrawingArgs() { graphics = buffered.Graphics });
+                                PreDrawEvent    .Invoke(this, new PreDrawArgs() { graphics = buffered.Graphics });
+                                DrawEvent       .Invoke(this, new DrawingArgs() { graphics = buffered.Graphics });
+                                CameraEvent     .Invoke(this, new CameraArgs() { graphics = buffered.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
+                                buffered.Render();
+                            }
                         }
                     }
+                    taskDone = true;
                 }
-                taskDone = true;
             }
             void update(ref bool taskDone)
             {
@@ -148,11 +147,15 @@ namespace FoundationR
                     LoadResourcesEvent.Invoke(this, new EventArgs());
                     InitializeEvent.Invoke(this, new InitializeArgs());
                 }
-                if (!taskDone) return;
-                taskDone = false;
-                UpdateEvent.Invoke(this, new UpdateArgs());
-                taskDone = true;
+                if (taskDone)
+                { 
+                    taskDone = false;
+                    UpdateEvent.Invoke(this, new UpdateArgs());
+                    taskDone = true;
+                }
+                dispatcher.BeginInvoke(() => update(ref flag2), DispatcherPriority.Background, null);
             }
+            form.Show();
         }
         #region events
         public static event EventHandler<EventArgs> ResizeEvent;
