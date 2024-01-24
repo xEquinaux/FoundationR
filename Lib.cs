@@ -246,6 +246,14 @@ namespace FoundationR
     }
     public class Surface
     {
+        public Surface(int x, int y, int width, int height, string windowTitle)
+        {
+            this.X = x;
+            this.Y = y;
+            this.Width = width;
+            this.Height = height;
+            this.Title = windowTitle;
+        }
         public string? Title;
         public int Width, Height;
         public int X, Y;

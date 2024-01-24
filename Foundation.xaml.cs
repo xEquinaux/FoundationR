@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Runtime.CompilerServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -14,37 +15,17 @@ namespace FoundationR
 {
     public enum SurfaceType
     {
-        Automatic,
         WPFImage,
         WindowHandle
     }
     public partial class Foundation : Window
     {
-        SurfaceType type;
-        Image? wpfImage;
-        Surface? windowHandle;
-        public Foundation()
-        {
-            type = SurfaceType.Automatic;
-            InitializeComponent();
-        }
-        public Foundation(Image wpfImage)
-        {
-            this.wpfImage = wpfImage;
-            type = SurfaceType.WPFImage;
-        }
-        public Foundation(Surface surface)
-        {
-            this.windowHandle = surface;
-            type = SurfaceType.WindowHandle;
-        }
+        public Image? wpfImage;
+        public Surface? windowHandle;
         public void Run(SurfaceType type)
         {
             switch (type)
             {
-                case SurfaceType.Automatic:
-                    Run(Dispatcher, auto_surface);
-                    break;
                 case SurfaceType.WPFImage:
                     Run(Dispatcher, wpfImage);
                     break;
@@ -52,6 +33,18 @@ namespace FoundationR
                     Run(Dispatcher, windowHandle);
                     break;
             }
+        }
+        public void Run(Image wpfImage)
+        {
+            Run(Dispatcher, wpfImage);
+        }
+        public void Run(Surface windowData)
+        {
+            Run(Dispatcher, windowData);
+        }
+        class SurfaceTypeException : Exception
+        {
+            public override string Message => "Surface enum not defined";
         }
     }
 }
