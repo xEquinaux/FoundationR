@@ -30,7 +30,7 @@ namespace FoundationR
         public Foundation(Image wpfImage)
         {
             this.wpfImage = wpfImage;
-            type = SurfaceType.WpfImage;
+            type = SurfaceType.WPFImage;
         }
         public Foundation(Surface surface)
         {
@@ -45,7 +45,7 @@ namespace FoundationR
                 case SurfaceType.Automatic:
                     Run(Dispatcher, auto_surface);
                     break;
-                case SurfaceType.WpfImage:
+                case SurfaceType.WPFImage:
                     Run(Dispatcher, wpfImage);
                     break;
                 case SurfaceType.WindowHandle:
