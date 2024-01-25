@@ -9,8 +9,79 @@ using static FoundationR.REW;
 
 namespace FoundationR
 {
-    public class ImagerLoader
+    public struct BitmapFile
     {
+        public string Name;
+        public Bitmap Value;
+    }
+    public static class ImagerLoader
+    {
+        static int count = 0;
+        static bool skip = false;
+        public static string WorkingDir;
+        public static void Initialize(string path)
+        {
+            WorkingDir = path;
+        }
+        public static REW BitmapIngest(in BitmapFile bitmap, REW instance)
+        {
+            string file = Path.Combine(WorkingDir, bitmap.Name);
+            BEGIN:
+            if (File.Exists(file) && !skip)
+            {
+                if (count == 0 || count > 1)
+                { 
+                    var result = MessageBox.Show($"File:\n\n{file}\n\nAlready exists. Would you like to overwrite it?", "File Overwrite", MessageBoxButtons.YesNoCancel);
+                    if (result == DialogResult.Yes)
+                    {
+                        handleFile(bitmap);
+                        count++;
+                    }
+                    else if (result == DialogResult.No)
+                    {
+                        SaveFileDialog dialog = new SaveFileDialog();
+                        dialog.Title = "Pick a save file";
+                        dialog.DefaultExt = "rew";
+                        dialog.CheckPathExists = true;
+                        dialog.RestoreDirectory = true;
+                        dialog.ShowDialog();
+                        file = dialog.FileName;
+                    }
+                    else if (result == DialogResult.Cancel)
+                    {
+                        return instance;
+                    }
+                }
+                else if (count == 1)
+                {
+                    var result = MessageBox.Show("There are clearly more files to be processed. Would you like to skip this dialog and overwrite them all?", "Overwrite All", MessageBoxButtons.YesNoCancel);
+                    if (result == DialogResult.Yes)
+                    {
+                        skip = true;
+                    }
+                    else if (result == DialogResult.Cancel)
+                    {
+                        return instance;
+                    }
+                    count++;
+                    goto BEGIN;
+                }
+            }
+            else
+            {
+               handleFile(bitmap);
+            }
+            void handleFile(BitmapFile bitmap)
+            {
+                instance.Extract(bitmap.Value);
+                using (FileStream fs = new FileStream(Path.Combine(WorkingDir, bitmap.Name), FileMode.Create))
+                {
+                    BinaryWriter bw = new BinaryWriter(fs);
+                    instance.Write(bw);
+                }
+            }
+            return instance;
+        }
     }
     public partial class REW
     {
@@ -54,7 +125,7 @@ namespace FoundationR
                 pixel = null;
             }
         }
-        public Pixel GetPixel(short x, short y, bool _lexicon = true)
+        public Pixel GetPixel(short x, short y)
         {
             int m = data.GetLength(0) + 1;
             int whoAmI = 0;
