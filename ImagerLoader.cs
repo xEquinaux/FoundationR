@@ -1,14 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Management.Instrumentation;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Markup;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using static FoundationR.REW;
+using Color = System.Drawing.Color;
+using MessageBox = System.Windows.Forms.MessageBox;
+using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
+using PixelFormat = System.Drawing.Imaging.PixelFormat;
 
 namespace FoundationR
 {
@@ -16,6 +26,46 @@ namespace FoundationR
     {
         public string Name;
         public Bitmap Value;
+    }
+    public class RewBatch
+    {
+        private int stride => width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
+        private int width, height;
+        private Int32Rect backBufferRect => new Int32Rect(0, 0, width, height);
+        private WriteableBitmap Surface;
+        public Bitmap Texture { get; private set; }
+        public RewBatch(int width, int height)
+        {
+            Initialize(width, height);
+        }
+        void Initialize(int width, int height)
+        {
+            this.width = width;
+            this.height = height;
+            Texture = new Bitmap(width, height);
+            Surface = (WriteableBitmap)WriteableBitmap.Create(width, height, 96d, 96d, PixelFormats.Bgr24, null, new byte[width * height * 4], stride);
+        } 
+        public void Begin()
+        {
+            Surface.Lock();
+            Surface.WritePixels(backBufferRect, REW.CreateEmpty(width, height).GetBuffer, stride, 0);
+        }
+        public void DrawImage(REW image, int x, int y, int width, int height)
+        {
+            Surface.WritePixels(new Int32Rect(x, y, width, height), image.GetBuffer, stride, 0);
+        }
+        public void DrawImage(REW image, Rectangle rect)
+        {
+            Surface.WritePixels(new Int32Rect(rect.X, rect.Y, rect.Width, rect.Height), image.GetBuffer, stride, 0);
+        }
+        public void Render(Graphics g)
+        {
+            Surface.CopyPixels(new Int32Rect(0, 0, width, height), g.GetHdc(), width * height * 4, stride);
+        }
+        public void End()
+        {
+            Surface.Unlock();
+        }
     }
     public static class ImagerLoader
     {
@@ -90,11 +140,55 @@ namespace FoundationR
     {
         byte[] data;
         int i;
-        public readonly int HeaderOffSet = 8;
+        public static readonly int HeaderOffSet = 8;
         public byte[] GetBuffer => data.Skip(HeaderOffSet).ToArray();
         public short Width { get; private set; } 
         public short Height { get; private set; }
         public int Count => (data.Length - HeaderOffSet) / 4;
+        public static REW Create(int width, int height, Color color)
+        {
+            return new REW(width, height, color);
+        }
+        public static REW CreateEmpty(int width, int height)
+        {
+            return new REW(width, height, default);
+        }
+        private REW() { }
+        private REW(int width, int height, Color color)
+        {
+            this.Width = (short)width;
+            this.Height = (short)height;
+            this.data = new byte[Width * Height * 4 + HeaderOffSet];
+            WriteHeader(this);
+            if (color != default)
+            { 
+                WriteDataChunk(this, color);
+            }
+        }
+        static void WriteHeader(REW rew)
+        {
+            rew.data.AddHeader(new Point16(rew.Width, rew.Height), rew.Width * rew.Height * 4);
+        }
+        static void WriteDataChunk(REW rew, Color color)
+        {
+            int num = 0;
+            for (int j = 0; j < rew.Height; j++)
+            {
+                for (int i = 0; i < rew.Width; i++)
+                {
+                    Pixel pixel = new Pixel()
+                    {
+                        B = color.B,
+                        G = color.G,
+                        R = color.R,
+                        A = color.A
+                    };
+                    rew.data.AppendPixel(num * 4 + REW.HeaderOffSet, pixel);
+                    pixel = null;
+                    num++;
+                }
+            }
+        }
         public void Extract(Bitmap bitmap)
         {
             int num = 0;
@@ -107,17 +201,17 @@ namespace FoundationR
             {
                 for (int i = 0; i < bitmap.Width; i++)
                 {
-                    num++;
                     Color c = bitmap.GetPixel(i, j);
                     Pixel pixel = new Pixel()
                     {
-                        A = c.A,
-                        R = c.R,
+                        B = c.B,
                         G = c.G,
-                        B = c.B
+                        R = c.R,
+                        A = c.A
                     };
                     data.AppendPixel(num * 4 + HeaderOffSet, pixel);
                     pixel = null;
+                    num++;
                 }
             }
         }
@@ -187,10 +281,10 @@ namespace FoundationR
             }
             else whoAmI = i * y + (x - y) + 1;
             whoAmI += HeaderOffSet;
-            data[whoAmI * 4]     = color.A;
-            data[whoAmI * 4 + 1] = color.R;
-            data[whoAmI * 4 + 2] = color.G;
-            data[whoAmI * 4 + 3] = color.B;
+            data[whoAmI * 4]     = color.B;
+            data[whoAmI * 4 + 1] = color.G;
+            data[whoAmI * 4 + 2] = color.R;
+            data[whoAmI * 4 + 3] = color.A;
         }
     }
     public class Pixel
@@ -199,7 +293,7 @@ namespace FoundationR
         public byte A, R, G, B;
         public byte[] Buffer()
         {
-            return new byte[] { A, R, G, B };
+            return new byte[] { B, G, R, A };
         }
     }
     public struct Point16
@@ -266,10 +360,10 @@ namespace FoundationR
         }
         public static byte[] AppendPixel(this byte[] array, int index, Pixel i)
         {
-            array[index]     = i.A;
-            array[index + 1] = i.R;
-            array[index + 2] = i.G;
-            array[index + 3] = i.B;
+            array[index]     = i.B;
+            array[index + 1] = i.G;
+            array[index + 2] = i.R;
+            array[index + 3] = i.A;
             return array;
         }
         public static byte[] AppendPoint16(this byte[] array, int index, Point16 i)

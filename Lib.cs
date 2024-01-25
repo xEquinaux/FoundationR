@@ -37,6 +37,7 @@ namespace FoundationR
         public static Rectangle bounds;
         public static Camera? viewport;
         static BufferedGraphicsContext context = BufferedGraphicsManager.Current;
+        static RewBatch rewBatch;
 
         internal class SurfaceForm : Form
         {
