@@ -30,7 +30,8 @@ namespace FoundationR
         static extern IntPtr GetDCEx(IntPtr hWnd, IntPtr hrgnClip, uint flags);
         [DllImport("user32.dll")]
         static extern IntPtr GetWindowDC(IntPtr hWnd);
-
+        
+        
         bool flag = true, flag2 = true, init;
         public static int offX, offY;
         public static Rectangle bounds;
