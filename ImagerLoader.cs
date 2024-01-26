@@ -24,16 +24,68 @@ namespace FoundationR
 {
     public struct BitmapFile
     {
+        static readonly int HeaderOffset = 56;
+        static readonly System.Windows.Media.PixelFormat Format = PixelFormats.Bgra32;
         public string Name;
         public Bitmap Value;
+        public static byte[] Create(REW image)
+        {
+            byte[] array = BmpHeader(image)
+                    .Concat(DIBHeader(image))
+                    .ToArray();
+            byte[] gap = new byte[array.Length % 4];
+            if (gap.Length > 0)
+            {
+                array = array
+                    .Concat(gap)
+                    .ToArray();
+            }
+            array = array
+                    .Concat(image.GetBuffer)
+                    .ToArray();
+            return array;
+        }
+        static byte[] BmpHeader(REW image)
+        {
+            byte[] fileSize = BitConverter.GetBytes(image.RealLength + HeaderOffset);
+            byte[] offset = BitConverter.GetBytes(HeaderOffSet);
+                            //  B     M   , Total file size                                   , N/a       , Index offset of where pixel array is
+            return new byte[] { 0x42, 0x4D, fileSize[0], fileSize[1], fileSize[2], fileSize[3], 0, 0, 0, 0, offset[0], offset[1], offset[2], offset[3] };
+        }
+        static byte[] DIBHeader(REW image)
+        {
+            return 
+                //Size of DIB header
+                BitConverter.GetBytes(40)
+                //Image width
+                .Concat(BitConverter.GetBytes((int)image.Width))
+                //Image height
+                .Concat(BitConverter.GetBytes((int)image.Height))
+                //# of color planes being used
+                .Concat(BitConverter.GetBytes((short)0))
+                //Pixel format
+                .Concat(BitConverter.GetBytes((short)32))
+                //Compression
+                .Concat(BitConverter.GetBytes(0))
+                //Size of the pixel array
+                .Concat(BitConverter.GetBytes(image.RealLength))
+                //Horizontal resolution of the image (96?)
+                .Concat(BitConverter.GetBytes(0))
+                //Vertical resolution of the image (96?)
+                .Concat(BitConverter.GetBytes(0))
+                //# of colors in the color palette
+                .Concat(BitConverter.GetBytes(0))
+                //# of important colors used
+                .Concat(BitConverter.GetBytes(0))
+                .ToArray();
+        }
     }
     public class RewBatch
     {
         private int stride => width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
         private int width, height;
         private Int32Rect backBufferRect => new Int32Rect(0, 0, width, height);
-        private WriteableBitmap Surface;
-        public Bitmap Texture { get; private set; }
+        private static REW BackBuffer;
         public RewBatch(int width, int height)
         {
             Initialize(width, height);
@@ -42,29 +94,26 @@ namespace FoundationR
         {
             this.width = width;
             this.height = height;
-            Texture = new Bitmap(width, height);
-            Surface = (WriteableBitmap)WriteableBitmap.Create(width, height, 96d, 96d, PixelFormats.Bgr24, null, new byte[width * height * 4], stride);
-        } 
+        }
         public void Begin()
         {
-            Surface.Lock();
-            Surface.WritePixels(backBufferRect, REW.CreateEmpty(width, height).GetBuffer, stride, 0);
+            BackBuffer = REW.Create(width, height, Color.CornflowerBlue);
         }
-        public void DrawImage(REW image, int x, int y, int width, int height)
+        public void Draw(REW image, int x, int y)
         {
-            Surface.WritePixels(new Int32Rect(x, y, width, height), image.GetBuffer, stride, 0);
-        }
-        public void DrawImage(REW image, Rectangle rect)
-        {
-            Surface.WritePixels(new Int32Rect(rect.X, rect.Y, rect.Width, rect.Height), image.GetBuffer, stride, 0);
+            BackBuffer.Composite(image, x, y);
         }
         public void Render(Graphics g)
         {
-            Surface.CopyPixels(new Int32Rect(0, 0, width, height), g.GetHdc(), width * height * 4, stride);
+            byte[] array = BitmapFile.Create(BackBuffer);
+            var m = new MemoryStream();
+            m.Write(array, 0, array.Length);
+            g.DrawImage(Bitmap.FromStream(m), PointF.Empty);
+            m.Dispose();
+            array = null;
         }
         public void End()
         {
-            Surface.Unlock();
         }
     }
     public static class ImagerLoader
@@ -145,6 +194,7 @@ namespace FoundationR
         public short Width { get; private set; } 
         public short Height { get; private set; }
         public int Count => (data.Length - HeaderOffSet) / 4;
+        public int RealLength => data.Length - HeaderOffSet;
         public static REW Create(int width, int height, Color color)
         {
             return new REW(width, height, color);
@@ -245,7 +295,7 @@ namespace FoundationR
                 pixel = null;
             }
         }
-        public Pixel GetPixel(short x, short y)
+        public Pixel GetPixel(int x, int y)
         {
             int i = this.i + 1;
             int whoAmI;
@@ -267,7 +317,7 @@ namespace FoundationR
                 B = data[whoAmI * 4 + 3]
             };
         }
-        public void SetPixel(short x, short y, Color color)
+        public void SetPixel(int x, int y, Color color)
         {
             int i = this.i + 1;
             int whoAmI;
@@ -293,8 +343,9 @@ namespace FoundationR
         public byte A, R, G, B;
         public byte[] Buffer()
         {
-            return new byte[] { B, G, R, A };
+            return new byte[] { A, R, G, B };
         }
+        public Color color => Color.FromArgb(A, R, G, B);
     }
     public struct Point16
     {
@@ -360,10 +411,10 @@ namespace FoundationR
         }
         public static byte[] AppendPixel(this byte[] array, int index, Pixel i)
         {
-            array[index]     = i.B;
-            array[index + 1] = i.G;
-            array[index + 2] = i.R;
-            array[index + 3] = i.A;
+            array[index]     = i.A;
+            array[index + 1] = i.R;
+            array[index + 2] = i.G;
+            array[index + 3] = i.B;
             return array;
         }
         public static byte[] AppendPoint16(this byte[] array, int index, Point16 i)
@@ -374,6 +425,18 @@ namespace FoundationR
             array[index + 2] = buffer[3];   // y
             array[index + 3] = buffer[4];
             return array;
+        }
+        public static void Composite(this REW backbuffer, REW tex, int x, int y)
+        {
+            short width = tex.Width;
+            short height = tex.Height;
+            for (int n = y; n < y + height; n++)
+            {
+                for (int m = x; m < x + width; m++)
+                {
+                    backbuffer.SetPixel(m, n, tex.GetPixel((short)(m - x), (short)(n - y)).color);
+                }
+            }
         }
     }
 }
