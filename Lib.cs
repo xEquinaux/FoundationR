@@ -30,12 +30,14 @@ namespace FoundationR
         static extern IntPtr GetDCEx(IntPtr hWnd, IntPtr hrgnClip, uint flags);
         [DllImport("user32.dll")]
         static extern IntPtr GetWindowDC(IntPtr hWnd);
-
+        
+        
         bool flag = true, flag2 = true, init;
         public static int offX, offY;
         public static Rectangle bounds;
         public static Camera? viewport;
         static BufferedGraphicsContext context = BufferedGraphicsManager.Current;
+        static RewBatch rewBatch;
 
         internal class SurfaceForm : Form
         {
@@ -50,6 +52,8 @@ namespace FoundationR
                 Text = surface.Title;
                 Name = surface.Title;
                 DoubleBuffered = true;
+                UseWaitCursor = false;
+                BringToFront();
             }
         }
 
@@ -67,6 +71,7 @@ namespace FoundationR
         internal void Run(Dispatcher dispatcher, Image surface)
         {
             this.RegisterHooks();
+            rewBatch = new RewBatch((int)surface.Width, (int)surface.Height);
             new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => draw(ref flag, surface), dispatcher).Start();
             update(ref flag2);
             void draw(ref bool taskDone, Image surface)
@@ -80,16 +85,19 @@ namespace FoundationR
                     {
                         using (Graphics g = Graphics.FromImage(bmp))
                         {
-                            using (BufferedGraphics buffered = context.Allocate(g, new Rectangle(0, 0, bounds.Width, bounds.Height)))
+                            using (BufferedGraphics b = context.Allocate(g, new Rectangle(0, 0, bounds.Width, bounds.Height)))
                             {
-                                SetQuality(buffered.Graphics, new System.Drawing.Rectangle(0, 0, bounds.Width, bounds.Height));
-                                g.Clear(System.Drawing.Color.CornflowerBlue);
-                                ResizeEvent.Invoke(this, new EventArgs());
-                                MainMenuEvent.Invoke(this, new DrawingArgs() { graphics = g });
-                                PreDrawEvent.Invoke(this, new PreDrawArgs() { graphics = g });
-                                DrawEvent.Invoke(this, new DrawingArgs() { graphics = g });
-                                CameraEvent.Invoke(this, new CameraArgs() { graphics = g, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
-                                buffered.Render();
+                                rewBatch.Begin();
+                                SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
+                                b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
+                                ResizeEvent     .Invoke(this, new EventArgs());
+                                MainMenuEvent   .Invoke(this, new DrawingArgs() { graphics = rewBatch });
+                                PreDrawEvent    .Invoke(this, new PreDrawArgs() { graphics = rewBatch });
+                                DrawEvent       .Invoke(this, new DrawingArgs() { graphics = rewBatch });
+                                CameraEvent     .Invoke(this, new CameraArgs() { graphics = b.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
+                                rewBatch.Render(b.Graphics);
+                                b.Render();
+                                rewBatch.End();
                             }
                         }
                         int stride = width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
@@ -120,6 +128,7 @@ namespace FoundationR
         internal void Run(Dispatcher dispatcher, Surface window)
         {
             Form form = new SurfaceForm(window);
+            rewBatch = new RewBatch(window.Width, window.Height);
             this.RegisterHooks();
             new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => draw(ref flag, window), dispatcher).Start();
             update(ref flag2);
@@ -135,14 +144,17 @@ namespace FoundationR
                     {
                         using (BufferedGraphics b = context.Allocate(g, new Rectangle(0, 0, width, height)))
                         {
+                            rewBatch.Begin();
                             SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
                             b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
                             ResizeEvent     .Invoke(this, new EventArgs());
-                            MainMenuEvent   .Invoke(this, new DrawingArgs() { graphics = b.Graphics });
-                            PreDrawEvent    .Invoke(this, new PreDrawArgs() { graphics = b.Graphics });
-                            DrawEvent       .Invoke(this, new DrawingArgs() { graphics = b.Graphics });
+                            MainMenuEvent   .Invoke(this, new DrawingArgs() { graphics = rewBatch });
+                            PreDrawEvent    .Invoke(this, new PreDrawArgs() { graphics = rewBatch });
+                            DrawEvent       .Invoke(this, new DrawingArgs() { graphics = rewBatch });
                             CameraEvent     .Invoke(this, new CameraArgs()  { graphics = b.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
+                            rewBatch.Render(b.Graphics);
                             b.Render();
+                            rewBatch.End();
                         }
                     }
                     DeleteObject(HDC);
@@ -178,11 +190,11 @@ namespace FoundationR
         public static event EventHandler<CameraArgs> CameraEvent;
         public class DrawingArgs : EventArgs
         {
-            public Graphics graphics;
+            public RewBatch graphics;
         }
         public class PreDrawArgs : EventArgs
         {
-            public Graphics graphics;
+            public RewBatch graphics;
         }
         public class UpdateArgs : EventArgs
         {
@@ -208,13 +220,13 @@ namespace FoundationR
         public virtual void Initialize()
         {
         }
-        public virtual void TitleScreen(Graphics graphics)
+        public virtual void TitleScreen(RewBatch graphics)
         {
         }
-        public virtual void PreDraw(Graphics graphics)
+        public virtual void PreDraw(RewBatch graphics)
         {
         }
-        public virtual void Draw(Graphics graphics)
+        public virtual void Draw(RewBatch graphics)
         {
         }
         public virtual void Update()
