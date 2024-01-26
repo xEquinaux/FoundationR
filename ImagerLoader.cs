@@ -18,13 +18,34 @@ using static FoundationR.REW;
 using Color = System.Drawing.Color;
 using MessageBox = System.Windows.Forms.MessageBox;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
-using PixelFormat = System.Drawing.Imaging.PixelFormat;
+using PixelFormat = System.Windows.Media.PixelFormat;
 
 namespace FoundationR
 {
+    public enum CompressionMethod : uint
+    {
+        BI_RGB = 0,
+        BI_RLE8 = 1,
+        BI_RLE4 = 2,
+        BI_BITFIELDS = 3,
+        BI_JPEG = 4,
+        BI_PNG = 5,
+        BI_ALPHABITFIELDS = 6,
+        BI_CMYK = 11,
+        BI_CMYKRLE8 = 12,
+        BI_CMYKRLE4 = 13
+    }
+    public enum BitmapHeader : int
+    {
+        BITMAPINFOHEADER,
+        BITMAPV2INFOHEADER,
+        BITMAPV3INFOHEADER,
+        BITMAPV4HEADER,
+        BITMAPV5HEADER
+    }
     public struct BitmapFile
     {
-        static readonly int HeaderOffset = 56;
+        static readonly int HeaderOffset = 54;
         static readonly System.Windows.Media.PixelFormat Format = PixelFormats.Bgra32;
         public string Name;
         public Bitmap Value;
@@ -43,12 +64,19 @@ namespace FoundationR
             array = array
                     .Concat(image.GetBuffer)
                     .ToArray();
+            gap = new byte[array.Length % 4];
+            if (gap.Length > 0)
+            {
+                array = array
+                    .Concat(gap)
+                    .ToArray();
+            }
             return array;
         }
         static byte[] BmpHeader(REW image)
         {
             byte[] fileSize = BitConverter.GetBytes(image.RealLength + HeaderOffset);
-            byte[] offset = BitConverter.GetBytes(HeaderOffSet);
+            byte[] offset = BitConverter.GetBytes(HeaderOffset);
                             //  B     M   , Total file size                                   , N/a       , Index offset of where pixel array is
             return new byte[] { 0x42, 0x4D, fileSize[0], fileSize[1], fileSize[2], fileSize[3], 0, 0, 0, 0, offset[0], offset[1], offset[2], offset[3] };
         }
@@ -65,17 +93,17 @@ namespace FoundationR
                 .Concat(BitConverter.GetBytes((short)0))
                 //Pixel format
                 .Concat(BitConverter.GetBytes((short)32))
-                //Compression
+                //Compression, if raw, normally 0
                 .Concat(BitConverter.GetBytes(0))
-                //Size of the pixel array
+                //Size of the pixel array (including padding)
                 .Concat(BitConverter.GetBytes(image.RealLength))
-                //Horizontal resolution of the image (96?)
-                .Concat(BitConverter.GetBytes(0))
-                //Vertical resolution of the image (96?)
-                .Concat(BitConverter.GetBytes(0))
+                //Horizontal resolution of the image (96)
+                .Concat(BitConverter.GetBytes(96))
+                //Vertical resolution of the image (96)
+                .Concat(BitConverter.GetBytes(96))
                 //# of colors in the color palette
                 .Concat(BitConverter.GetBytes(0))
-                //# of important colors used
+                //# of important colors used (0 means all)
                 .Concat(BitConverter.GetBytes(0))
                 .ToArray();
         }
@@ -108,7 +136,8 @@ namespace FoundationR
             byte[] array = BitmapFile.Create(BackBuffer);
             var m = new MemoryStream();
             m.Write(array, 0, array.Length);
-            g.DrawImage(Bitmap.FromStream(m), PointF.Empty);
+            Bitmap a = (Bitmap)Bitmap.FromStream(m);
+            g.DrawImage(a, PointF.Empty);
             m.Dispose();
             array = null;
         }
@@ -189,10 +218,12 @@ namespace FoundationR
     {
         byte[] data;
         int i;
+        int NumChannels => BitsPerPixel >= 32 ? 4 : 3;
         public static readonly int HeaderOffSet = 8;
         public byte[] GetBuffer => data.Skip(HeaderOffSet).ToArray();
         public short Width { get; private set; } 
         public short Height { get; private set; }
+        public short BitsPerPixel { get; private set; }
         public int Count => (data.Length - HeaderOffSet) / 4;
         public int RealLength => data.Length - HeaderOffSet;
         public static REW Create(int width, int height, Color color)
@@ -331,10 +362,10 @@ namespace FoundationR
             }
             else whoAmI = i * y + (x - y) + 1;
             whoAmI += HeaderOffSet;
-            data[whoAmI * 4]     = color.B;
-            data[whoAmI * 4 + 1] = color.G;
-            data[whoAmI * 4 + 2] = color.R;
-            data[whoAmI * 4 + 3] = color.A;
+            data[whoAmI * 4]     = color.A;
+            data[whoAmI * 4 + 1] = color.R;
+            data[whoAmI * 4 + 2] = color.G;
+            data[whoAmI * 4 + 3] = color.B;
         }
     }
     public class Pixel
@@ -343,7 +374,7 @@ namespace FoundationR
         public byte A, R, G, B;
         public byte[] Buffer()
         {
-            return new byte[] { A, R, G, B };
+                return new byte[] { A, R, G, B };
         }
         public Color color => Color.FromArgb(A, R, G, B);
     }
