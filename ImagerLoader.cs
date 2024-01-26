@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Management.Instrumentation;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -65,6 +66,9 @@ namespace FoundationR
     }
     public class RewBatch
     {
+        [DllImport("gdi32.dll", SetLastError = true)]
+        static extern IntPtr CreateDIBSection(IntPtr hdc, [In] ref BITMAPINFO pbmi, uint iUsage, out IntPtr ppbBits, IntPtr hSection, uint dwOffset);
+
         private int stride => width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
         private int width, height;
         private Int32Rect backBufferRect => new Int32Rect(0, 0, width, height);
@@ -77,21 +81,22 @@ namespace FoundationR
         {
             this.width = width;
             this.height = height;
+            BackBuffer = ImageLoader.BitmapIngest(new BitmapFile() { Value = (Bitmap)Bitmap.FromFile(@"C:\Users\nolan\source\repos\test_env\Textures\bluepane.png") }, PixelFormats.Bgr32);
         }
         public void Begin()
         {
-            BackBuffer = REW.Create(640, 480, Color.Black, PixelFormats.Bgr24);
         }
         public void Draw(REW image, int x, int y)
         {
-            BackBuffer.Composite(image, x, y);
+            //BackBuffer.Composite(image, x, y);
         }
         public void Render(Graphics g)
         {
             byte[] array = BitmapFile.Create(BackBuffer);
             var m = new MemoryStream();
+            
             m.Write(array, 0, array.Length);
-            Bitmap a = (Bitmap)Bitmap.FromStream(m);
+            Bitmap a = (Bitmap)Bitmap.FromHbitmap(m);
             g.DrawImage(a, 0, 0, a.Width, a.Height);
             m.Dispose();
             array = null;
@@ -110,9 +115,9 @@ namespace FoundationR
         {
             WorkingDir = path;
         }
-        public static REW BitmapIngest(BitmapFile bitmap, bool skipConvert = true)
+        public static REW BitmapIngest(BitmapFile bitmap, PixelFormat format, bool skipConvert = true)
         {
-            REW instance = REW.CreateEmpty(bitmap.Value.Width, bitmap.Value.Height, PixelFormats.Bgr32);
+            REW instance = REW.CreateEmpty(bitmap.Value.Width, bitmap.Value.Height, format);
             if (!skipConvert)
             { 
                 string file = Path.Combine(WorkingDir, bitmap.Name);
@@ -265,8 +270,8 @@ namespace FoundationR
             this.i = bitmap.Width;
             this.Width = (short)bitmap.Width;
             this.Height = (short)bitmap.Height;
-            this.data = new byte[bitmap.Width * bitmap.Height * 4 + HeaderOffset];
-            this.data.AddHeader(new Point16(this.Width, this.Height), bitmap.Width * bitmap.Height * 4 + HeaderOffset, BitsPerPixel);
+            this.data = new byte[bitmap.Width * bitmap.Height * NumChannels + HeaderOffset];
+            this.data.AddHeader(new Point16(this.Width, this.Height), bitmap.Width * bitmap.Height * NumChannels + HeaderOffset, BitsPerPixel);
             for (int j = 0; j < bitmap.Height; j++)
             {
                 for (int i = 0; i < bitmap.Width; i++)
@@ -313,60 +318,42 @@ namespace FoundationR
         }
         public Pixel GetPixel(int x, int y)
         {
-            int i = this.Width + 1;
-            int whoAmI;
-            if (y == 0)
-            {
-                whoAmI = x;
-            }
-            else if (x == 0)
-            {
-                whoAmI = i * y;
-            }
-            else whoAmI = i * y + (x - y) + 1;
+            int i = this.Width;
+            int whoAmI = y * i + x;
             if (NumChannels == 4)
             {
                 return new Pixel(
-                    data[whoAmI + HeaderOffset],
-                    data[whoAmI + HeaderOffset + 1],
-                    data[whoAmI + HeaderOffset + 2],
-                    data[whoAmI + HeaderOffset + 3]
+                    data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset)],
+                    data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset + 1)],
+                    data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset + 2)],
+                    data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset + 3)]
                 );
             }
             else
             {
                 return new Pixel(
-                    data[whoAmI + HeaderOffset],
-                    data[whoAmI + HeaderOffset + 1],
-                    data[whoAmI + HeaderOffset + 2]
+                    data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset)],
+                    data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset + 1)],
+                    data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset + 2)]
                 );
             }
         }
         public void SetPixel(int x, int y, Color color)
         {
-            int i = this.Width + 1;
-            int whoAmI;
-            if (y == 0)
-            {
-                whoAmI = x;
-            }
-            else if (x == 0)
-            {
-                whoAmI = i * y;
-            }
-            else whoAmI = i * y + (x - y) + 1;
+            int i = this.Width;
+            int whoAmI = y * i + x;
             if (NumChannels == 4)
             { 
-                data[whoAmI + HeaderOffset]     = color.A;
-                data[whoAmI + HeaderOffset + 1] = color.R;
-                data[whoAmI + HeaderOffset + 2] = color.G;
-                data[whoAmI + HeaderOffset + 3] = color.B;
+                data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset)]     = color.A;
+                data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset + 1)] = color.R;
+                data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset + 2)] = color.G;
+                data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset + 3)] = color.B;
             }
             else
             {
-                data[whoAmI + HeaderOffset]     = color.R;
-                data[whoAmI + HeaderOffset + 1] = color.G;
-                data[whoAmI + HeaderOffset + 2] = color.B;
+                data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset)]     = color.R;
+                data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset + 1)] = color.G;
+                data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset + 2)] = color.B;
             }
         }
     }
@@ -392,7 +379,7 @@ namespace FoundationR
         }
         public byte A = 255, R, G, B;
         public byte[] Buffer => hasAlpha ? new byte[] { A, R, G, B } : new byte[] { R, G, B };
-        public Color color   => Color.FromArgb(A, R, G, B);
+        public Color color   => Color.FromArgb(A, B, G, R);
     }
     public struct Point16
     {
@@ -485,18 +472,17 @@ namespace FoundationR
             array[index + 3] = buffer[4];
             return array;
         }
-        public static REW Composite(this REW backbuffer, REW tex, int x, int y)
+        public static void Composite(this REW one, REW tex, int x, int y)
         {
             short width = tex.Width;
             short height = tex.Height;
-            for (int n = y; n < y + height; n++)
+            for (int n = 0; n < height; n++)
             {
-                for (int m = x; m < x + width; m++)
+                for (int m = 0; m < width; m++)
                 {
-                    backbuffer.SetPixel(m, n, tex.GetPixel(m - x, n - y).color);
+                    one.SetPixel(m + x, n + y, tex.GetPixel(m, Math.Abs(n - height)).color);
                 }
             }
-            return backbuffer;
         }
     }
 }

@@ -23,8 +23,8 @@ namespace FoundationR
         internal uint biSize;
         internal int biWidth;
         internal int biHeight;
-        internal short biPlanes;
-        internal short biBitCount;
+        internal ushort biPlanes;
+        internal ushort biBitCount;
         internal uint biCompression;
         internal uint biSizeImage;
         internal int biXPelsPerMeter;
@@ -71,9 +71,9 @@ namespace FoundationR
                 //Image height
                 .Concat(BitConverter.GetBytes(header.biHeight = (int)image.Height))
                 //# of color planes being used
-                .Concat(BitConverter.GetBytes(header.biPlanes = (short)0))
+                .Concat(BitConverter.GetBytes(header.biPlanes = (ushort)0))
                 //Pixel format
-                .Concat(BitConverter.GetBytes(header.biBitCount = image.BitsPerPixel))
+                .Concat(BitConverter.GetBytes(header.biBitCount = (ushort)image.BitsPerPixel))
                 //Compression, if raw, normally 0
                 .Concat(BitConverter.GetBytes(header.biCompression = (uint)CompressionMethod.BI_RGB))
                 //Size of the pixel array (including padding)
@@ -95,8 +95,8 @@ namespace FoundationR
         internal uint biSize;
         internal int biWidth;
         internal int biHeight;
-        internal short biPlanes;
-        internal short biBitCount;
+        internal ushort biPlanes;
+        internal ushort biBitCount;
         internal uint biCompression;
         internal uint biSizeImage;
         internal int biXPelsPerMeter;
@@ -155,18 +155,18 @@ namespace FoundationR
             Array.Copy(BitConverter.GetBytes(header.biSize = HeaderOffset), 0, array, 0, 4);
             Array.Copy(BitConverter.GetBytes(header.biWidth = (int)rew.Width), 0, array, 4, 4);
             Array.Copy(BitConverter.GetBytes(header.biHeight = (int)rew.Height), 0, array, 8, 4);
-            Array.Copy(BitConverter.GetBytes(header.biPlanes = 0), 0, array, 12, 2);
+            Array.Copy(BitConverter.GetBytes(header.biPlanes = 1), 0, array, 12, 2);
             Array.Copy(BitConverter.GetBytes(header.biBitCount = 32), 0, array, 14, 2);
-            Array.Copy(BitConverter.GetBytes(header.biCompression = (uint)CompressionMethod.BI_ALPHABITFIELDS), 0, array, 16, 4);
+            Array.Copy(BitConverter.GetBytes(header.biCompression = (uint)CompressionMethod.BI_BITFIELDS), 0, array, 16, 4);
             Array.Copy(BitConverter.GetBytes(header.biSizeImage = (uint)rew.RealLength), 0, array, 20, 4);
             Array.Copy(BitConverter.GetBytes(header.biXPelsPerMeter = 96), 0, array, 24, 4);
             Array.Copy(BitConverter.GetBytes(header.biYPelsPerMeter = 96), 0, array, 28, 4);
             Array.Copy(BitConverter.GetBytes(header.biClrUsed = 0), 0, array, 32, 4);
             Array.Copy(BitConverter.GetBytes(header.biClrImportant = 0), 0, array, 36, 4);
-            Array.Copy(BitConverter.GetBytes(header.biRedMask = 0), 0, array, 40, 4);
-            Array.Copy(BitConverter.GetBytes(header.biGreenMask =  0), 0, array, 44, 4);
-            Array.Copy(BitConverter.GetBytes(header.biBlueMask = 0), 0, array, 48, 4);
-            Array.Copy(BitConverter.GetBytes(header.biAlphaMask = 0), 0, array, 52, 4);
+            Array.Copy(BitConverter.GetBytes(header.biRedMask = 0x00FF0000), 0, array, 40, 4);
+            Array.Copy(BitConverter.GetBytes(header.biGreenMask =  0x0000FF00), 0, array, 44, 4);
+            Array.Copy(BitConverter.GetBytes(header.biBlueMask = 0x000000FF), 0, array, 48, 4);
+            Array.Copy(BitConverter.GetBytes(header.biAlphaMask = 0xFF000000), 0, array, 52, 4);
             Array.Copy(BitConverter.GetBytes(header.biCSType = 0), 0, array, 56, 4);
             Array.Copy(BitConverter.GetBytes(header.biAlphaMask = 0), 0, array, 60, 4);
             Array.Copy(BitConverter.GetBytes(header.biCSType = 0), 0, array, 64, 4);
