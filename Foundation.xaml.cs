@@ -18,7 +18,7 @@ namespace FoundationR
         WPFImage,
         WindowHandle
     }
-    public partial class Foundation
+    public partial class Foundation : Window
     {
         public Image? wpfImage;
         public Surface? windowHandle;

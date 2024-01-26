@@ -7,15 +7,7 @@
     </ApplicationDefinition>
   </ItemGroup>
   <ItemGroup>
-    <Compile Update="ImageLoader.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
-  </ItemGroup>
-  <ItemGroup>
     <Page Update="Foundation.xaml">
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Update="ImageLoader.xaml">
       <SubType>Designer</SubType>
     </Page>
   </ItemGroup>
