@@ -40,17 +40,11 @@ namespace FoundationR
                     array = array.Concat(BITMAPV3INFOHEADER.CreateDIBHeader(image, out _)).ToArray();
                     break;
             }
-            byte[] gap = new byte[array.Length % 4];
-            if (gap.Length > 0)
-            {
-                array = array
-                    .Concat(gap)
-                    .ToArray();
-            }
-            array = array
-                    .Concat(image.GetBuffer())
-                    .ToArray();
             return array;
+        }
+        static byte[] GetDataBuffer(REW image)
+        {
+            return image.GetBuffer();
         }
         static byte[] BmpHeader(REW image, int arrayOffset)
         {
@@ -63,8 +57,10 @@ namespace FoundationR
         {
             int headerSize = 14;
             byte[] dib = GetDIBHeader(image);
-            byte[] header = BmpHeader(image, dib.Length - image.RealLength + headerSize);
-            return header.Concat(dib).ToArray();
+            byte[] header = BmpHeader(image, dib.Length + headerSize);
+            var result = header.Concat(dib);
+            byte[] data = GetDataBuffer(image);
+            return result.Concat(data).ToArray();
         }
     }
     public class RewBatch
@@ -84,11 +80,11 @@ namespace FoundationR
         }
         public void Begin()
         {
-            BackBuffer = REW.Create(width, height, Color.CornflowerBlue, PixelFormats.Rgb24);
+            BackBuffer = REW.Create(640, 480, Color.Black, PixelFormats.Bgr24);
         }
         public void Draw(REW image, int x, int y)
         {
-            BackBuffer = BackBuffer.Composite(image, x, y);
+            BackBuffer.Composite(image, x, y);
         }
         public void Render(Graphics g)
         {
@@ -96,15 +92,16 @@ namespace FoundationR
             var m = new MemoryStream();
             m.Write(array, 0, array.Length);
             Bitmap a = (Bitmap)Bitmap.FromStream(m);
-            g.DrawImage(a, PointF.Empty);
+            g.DrawImage(a, 0, 0, a.Width, a.Height);
             m.Dispose();
             array = null;
         }
         public void End()
         {
+            BackBuffer = null;
         }
     }
-    public static class ImagerLoader
+    public static class ImageLoader
     {
         static int count = 0;
         static bool skip = false;
@@ -113,53 +110,61 @@ namespace FoundationR
         {
             WorkingDir = path;
         }
-        public static REW BitmapIngest(in BitmapFile bitmap, REW instance)
+        public static REW BitmapIngest(BitmapFile bitmap, bool skipConvert = true)
         {
-            string file = Path.Combine(WorkingDir, bitmap.Name);
-            BEGIN:
-            if (File.Exists(file) && !skip)
-            {
-                if (count == 0 || count > 1)
-                { 
-                    var result = MessageBox.Show($"File:\n\n{file}\n\nAlready exists. Would you like to overwrite it?", "File Overwrite", MessageBoxButtons.YesNoCancel);
-                    if (result == DialogResult.Yes)
+            REW instance = REW.CreateEmpty(bitmap.Value.Width, bitmap.Value.Height, PixelFormats.Bgr32);
+            if (!skipConvert)
+            { 
+                string file = Path.Combine(WorkingDir, bitmap.Name);
+                BEGIN:
+                if (File.Exists(file) && !skip)
+                {
+                    if (count == 0 || count > 1)
+                    { 
+                        var result = MessageBox.Show($"File:\n\n{file}\n\nAlready exists. Would you like to overwrite it?", "File Overwrite", MessageBoxButtons.YesNoCancel);
+                        if (result == DialogResult.Yes)
+                        {
+                            handleFile(bitmap);
+                            count++;
+                        }
+                        else if (result == DialogResult.No)
+                        {
+                            SaveFileDialog dialog = new SaveFileDialog();
+                            dialog.Title = "Pick a save file";
+                            dialog.DefaultExt = "rew";
+                            dialog.CheckPathExists = true;
+                            dialog.RestoreDirectory = true;
+                            dialog.ShowDialog();
+                            file = dialog.FileName;
+                        }
+                        else if (result == DialogResult.Cancel)
+                        {
+                            return instance;
+                        }
+                    }
+                    else if (count == 1)
                     {
-                        handleFile(bitmap);
+                        var result = MessageBox.Show("There are clearly more files to be processed. Would you like to skip this dialog and overwrite them all?", "Overwrite All", MessageBoxButtons.YesNoCancel);
+                        if (result == DialogResult.Yes)
+                        {
+                            skip = true;
+                        }
+                        else if (result == DialogResult.Cancel)
+                        {
+                            return instance;
+                        }
                         count++;
-                    }
-                    else if (result == DialogResult.No)
-                    {
-                        SaveFileDialog dialog = new SaveFileDialog();
-                        dialog.Title = "Pick a save file";
-                        dialog.DefaultExt = "rew";
-                        dialog.CheckPathExists = true;
-                        dialog.RestoreDirectory = true;
-                        dialog.ShowDialog();
-                        file = dialog.FileName;
-                    }
-                    else if (result == DialogResult.Cancel)
-                    {
-                        return instance;
+                        goto BEGIN;
                     }
                 }
-                else if (count == 1)
+                else
                 {
-                    var result = MessageBox.Show("There are clearly more files to be processed. Would you like to skip this dialog and overwrite them all?", "Overwrite All", MessageBoxButtons.YesNoCancel);
-                    if (result == DialogResult.Yes)
-                    {
-                        skip = true;
-                    }
-                    else if (result == DialogResult.Cancel)
-                    {
-                        return instance;
-                    }
-                    count++;
-                    goto BEGIN;
+                   handleFile(bitmap);
                 }
             }
             else
             {
-               handleFile(bitmap);
+                instance.Extract(bitmap.Value);
             }
             void handleFile(BitmapFile bitmap)
             {
@@ -196,6 +201,7 @@ namespace FoundationR
         private REW() { }
         private REW(int width, int height, Color color, PixelFormat format)
         {
+            this.i = width;
             this.BitsPerPixel = (short)format.BitsPerPixel;
             this.Width = (short)width;
             this.Height = (short)height;
@@ -275,7 +281,7 @@ namespace FoundationR
                     {
                         pixel = new Pixel(c.R, c.G, c.B);
                     }
-                    data.AppendPixel(num * 4 + HeaderOffset, pixel);
+                    data.AppendPixel(num * NumChannels + HeaderOffset, pixel);
                     pixel = null;
                     num++;
                 }
@@ -285,6 +291,7 @@ namespace FoundationR
         {
             w.Write(new Point16(Width, Height));
             w.Write(data.Length);
+            w.Write(BitsPerPixel);
             w.Write(data, 0, data.Length);
         }
         public void ReadData(BinaryReader br)
@@ -306,7 +313,7 @@ namespace FoundationR
         }
         public Pixel GetPixel(int x, int y)
         {
-            int i = this.i + 1;
+            int i = this.Width + 1;
             int whoAmI;
             if (y == 0)
             {
@@ -320,24 +327,24 @@ namespace FoundationR
             if (NumChannels == 4)
             {
                 return new Pixel(
-                    data[whoAmI * 4 + HeaderOffset],
-                    data[whoAmI * 4 + HeaderOffset + 1],
-                    data[whoAmI * 4 + HeaderOffset + 2],
-                    data[whoAmI * 4 + HeaderOffset + 3]
+                    data[whoAmI + HeaderOffset],
+                    data[whoAmI + HeaderOffset + 1],
+                    data[whoAmI + HeaderOffset + 2],
+                    data[whoAmI + HeaderOffset + 3]
                 );
             }
             else
             {
                 return new Pixel(
-                  data[whoAmI * 3 + HeaderOffset],
-                  data[whoAmI * 3 + HeaderOffset + 1],
-                  data[whoAmI * 3 + HeaderOffset + 2]
+                    data[whoAmI + HeaderOffset],
+                    data[whoAmI + HeaderOffset + 1],
+                    data[whoAmI + HeaderOffset + 2]
                 );
             }
         }
         public void SetPixel(int x, int y, Color color)
         {
-            int i = this.i + 1;
+            int i = this.Width + 1;
             int whoAmI;
             if (y == 0)
             {
@@ -350,16 +357,16 @@ namespace FoundationR
             else whoAmI = i * y + (x - y) + 1;
             if (NumChannels == 4)
             { 
-                data[whoAmI * 4 + HeaderOffset]     = color.A;
-                data[whoAmI * 4 + HeaderOffset + 1] = color.R;
-                data[whoAmI * 4 + HeaderOffset + 2] = color.G;
-                data[whoAmI * 4 + HeaderOffset + 3] = color.B;
+                data[whoAmI + HeaderOffset]     = color.A;
+                data[whoAmI + HeaderOffset + 1] = color.R;
+                data[whoAmI + HeaderOffset + 2] = color.G;
+                data[whoAmI + HeaderOffset + 3] = color.B;
             }
             else
             {
-                data[whoAmI * 3 + HeaderOffset] = color.R;
-                data[whoAmI * 3 + HeaderOffset + 1] = color.G;
-                data[whoAmI * 3 + HeaderOffset + 2] = color.B;
+                data[whoAmI + HeaderOffset]     = color.R;
+                data[whoAmI + HeaderOffset + 1] = color.G;
+                data[whoAmI + HeaderOffset + 2] = color.B;
             }
         }
     }

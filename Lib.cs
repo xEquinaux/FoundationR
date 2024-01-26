@@ -66,7 +66,7 @@ namespace FoundationR
             PreDrawEvent += (s, e) => PreDraw(e.graphics);
             DrawEvent += (s, e) => Draw(e.graphics);
             UpdateEvent += (s, e) => Update();
-            CameraEvent += (s, e) => Camera(e.graphics, e);
+            CameraEvent += (s, e) => Camera(e);
         }
         internal void Run(Dispatcher dispatcher, Image surface)
         {
@@ -129,7 +129,7 @@ namespace FoundationR
         {
             Form form = new SurfaceForm(window);
             rewBatch = new RewBatch(window.Width, window.Height);
-            this.RegisterHooks();
+            //this.RegisterHooks();
             new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => draw(ref flag, window), dispatcher).Start();
             update(ref flag2);
             void draw(ref bool taskDone, Surface surface)
@@ -147,11 +147,11 @@ namespace FoundationR
                             rewBatch.Begin();
                             SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
                             b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
-                            ResizeEvent     .Invoke(this, new EventArgs());
-                            MainMenuEvent   .Invoke(this, new DrawingArgs() { graphics = rewBatch });
-                            PreDrawEvent    .Invoke(this, new PreDrawArgs() { graphics = rewBatch });
-                            DrawEvent       .Invoke(this, new DrawingArgs() { graphics = rewBatch });
-                            CameraEvent     .Invoke(this, new CameraArgs()  { graphics = b.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
+                            ResizeWindow();
+                            TitleScreen(rewBatch);
+                            PreDraw(rewBatch);
+                            Draw(rewBatch);
+                            Camera(new CameraArgs(b.Graphics, viewport, bounds, offX, offY));
                             rewBatch.Render(b.Graphics);
                             b.Render();
                             rewBatch.End();
@@ -166,13 +166,13 @@ namespace FoundationR
                 if (!init)
                 {
                     init = true;
-                    LoadResourcesEvent.Invoke(this, new EventArgs());
-                    InitializeEvent.Invoke(this, new InitializeArgs());
+                    LoadResources();
+                    Initialize();
                 }
                 if (taskDone)
                 { 
                     taskDone = false;
-                    UpdateEvent.Invoke(this, new UpdateArgs());
+                    Update();
                     taskDone = true;
                 }
                 dispatcher.BeginInvoke(() => update(ref flag2), DispatcherPriority.Background, null);
@@ -201,6 +201,15 @@ namespace FoundationR
         }
         public class CameraArgs : EventArgs
         {
+            public CameraArgs() { }
+            public CameraArgs(Graphics g, Camera a, Rectangle r, int offX, int offY)
+            {
+                graphics = g;
+                CAMERA = a;
+                screen = r;
+                this.offX = offX;
+                this.offY = offY;
+            }
             public Graphics graphics;
             public Camera CAMERA;
             public Rectangle screen;
@@ -232,7 +241,7 @@ namespace FoundationR
         public virtual void Update()
         {
         }
-        public virtual void Camera(Graphics graphics, CameraArgs e)
+        public virtual void Camera(CameraArgs e)
         {
             if (e.CAMERA == null)
                 return;
@@ -241,8 +250,8 @@ namespace FoundationR
                 e.screen.X = (int)-e.CAMERA.position.X + e.screen.Width / 2 - e.offX;
                 e.screen.Y = (int)-e.CAMERA.position.Y + e.screen.Height / 2 - e.offY;
             }
-            graphics.RenderingOrigin = new System.Drawing.Point((int)e.CAMERA.position.X, (int)e.CAMERA.position.Y);
-            graphics.TranslateTransform(
+            e.graphics.RenderingOrigin = new System.Drawing.Point((int)e.CAMERA.position.X, (int)e.CAMERA.position.Y);
+            e.graphics.TranslateTransform(
                 e.screen.X,
                 e.screen.Y,
                 MatrixOrder.Append);
