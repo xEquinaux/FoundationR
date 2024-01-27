@@ -34,22 +34,23 @@ namespace FoundationR
             byte[] array = new byte[0];
             switch (image.Header)
             { 
+                default:
                 case BitmapHeader.BITMAPINFOHEADER:
-                    //array = array.Concat(BITMAPINFOHEADER.CreateDIBHeader(image, out _)).ToArray();
+                    array = array.Concat(BITMAPINFOHEADER.CreateDIBHeader(image, out _)).ToArray();
                     break;
                 case BitmapHeader.BITMAPV3INFOHEADER:
-                    //array = array.Concat(BITMAPV3INFOHEADER.CreateDIBHeader(image, out _)).ToArray();
+                    array = array.Concat(BITMAPV3INFOHEADER.CreateDIBHeader(image, out _)).ToArray();
                     break;
             }
             return array;
         }
         static byte[] GetDataBuffer(REW image)
         {
-            return image.GetBuffer();
+            return image.GetPixels();
         }
         static byte[] BmpHeader(REW image, int arrayOffset)
         {
-            byte[] fileSize = BitConverter.GetBytes(image.RealLength + HeaderOffset);
+            byte[] fileSize = BitConverter.GetBytes(image.RealLength);
             byte[] offset = BitConverter.GetBytes(arrayOffset);
                             //  B     M   , Total file size                                   , N/a       , Index offset of where pixel array is
             return new byte[] { 0x42, 0x4D, fileSize[0], fileSize[1], fileSize[2], fileSize[3], 0, 0, 0, 0, offset[0], offset[1], offset[2], offset[3] };
@@ -87,59 +88,20 @@ namespace FoundationR
         {
             this.width = width;
             this.height = height;
-            //BackBuffer = ImageLoader.BitmapIngest(new BitmapFile() { Value = (Bitmap)Bitmap.FromFile(@"C:\Users\nolan\source\repos\test_env\Textures\bluepane.png") }, PixelFormats.Bgr32);
         }
         public void Begin()
         {
+            BackBuffer = REW.Create(640, 480, Color.FromArgb(100, Color.White), PixelFormats.Bgr32);
         }
         public void Draw(REW image, int x, int y)
         {
-            //BackBuffer.Composite(image, x, y);
+            BackBuffer.Composite(image, x, y);
         }
-        public void Render(Graphics g, IntPtr hdc)
+        public void Render(Graphics g)
         {
-            BitmapInfoHeader bmih = new BitmapInfoHeader()
-            {
-                Width = 640,
-                Height = 480,
-                Planes = 1,
-                BitCount = 32,
-                Compression = (uint)BitmapCompressionMode.BI_BITFIELDS,
-                SizeImage = 640 * 480 * 4,
-                XPelsPerMeter = 0,
-                YPelsPerMeter = 0,
-                ClrUsed = 0,
-                ClrImportant = 0,
-                RedMask = 0x00FF0000,
-                GreenMask = 0x0000FF00,
-                BlueMask = 0x000000FF,
-                AlphaMask = 0xFF000000
-                
-            };
-            bmih.Size = (uint)Marshal.SizeOf(bmih);
-            BitmapInfo bmi = new BitmapInfo()
-            {
-                Header = bmih,
-                Colors = new RGBQuad[] { }
-            };
-            Bitmap map = default;
-            IntPtr hBitmap = CreateDIBSection(hdc, ref bmi, (uint)DIBColors.DIB_RGB_COLORS, out IntPtr ppbBits, IntPtr.Zero, 0);
-            if (hBitmap != default)
-            {
-                map = Bitmap.FromHbitmap(hBitmap);
-            }
-            ReleaseDC(IntPtr.Zero, hdc);
-            Foundation.DeleteObject(hBitmap);
-            /*
-             * byte[] array = BitmapFile.Create(BackBuffer);
-             * var m = new MemoryStream();
-            
-            m.Write(array, 0, array.Length);
-            Bitmap a = (Bitmap)Bitmap.FromHbitmap(m);
-            g.DrawImage(a, 0, 0, a.Width, a.Height);
-            m.Dispose();
-            array = null;
-            */
+            Bitmap map = CreateBitmapFromByteArray(BackBuffer.GetPixels(), 640, 480);
+            g.DrawImage(map, 0, 0, 640, 480);
+            map.Dispose();
         }
         public void End()
         {
@@ -148,10 +110,8 @@ namespace FoundationR
         Bitmap CreateBitmapFromByteArray(byte[] pixels, int width, int height)
         {
             Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-
             Rectangle rect = new Rectangle(0, 0, width, height);
             BitmapData bmpData = bitmap.LockBits(rect, ImageLockMode.WriteOnly, bitmap.PixelFormat);
-
             try
             {
                 Marshal.Copy(pixels, 0, bmpData.Scan0, pixels.Length);
@@ -160,10 +120,8 @@ namespace FoundationR
             {
                 bitmap.UnlockBits(bmpData);
             }
-
             return bitmap;
         }
-
     }
     public static class ImageLoader
     {
@@ -276,7 +234,7 @@ namespace FoundationR
                 WriteDataChunk(this, color);
             }
         }
-        public byte[] GetBuffer()
+        public byte[] GetPixels()
         {
             if (NumChannels < 4)
             {
@@ -431,14 +389,14 @@ namespace FoundationR
         public Pixel(byte R, byte G, byte B)
         {
             //  Flipped; requires drawing 24bppBGR
-            this.R = B;
+            this.R = R;
             this.G = G;
-            this.B = R;
+            this.B = B;
             this.hasAlpha = false;
         }
         public byte A = 255, R, G, B;
-        public byte[] Buffer => hasAlpha ? new byte[] { A, R, G, B } : new byte[] { R, G, B };
-        public Color color   => Color.FromArgb(A, B, G, R);
+        public byte[] Buffer => hasAlpha ? new byte[] { R, G, B, A } : new byte[] { R, G, B };
+        public Color color   => Color.FromArgb(A, R, G, B);
     }
     public struct Point16
     {
@@ -509,10 +467,10 @@ namespace FoundationR
         {
             if (i.hasAlpha)
             { 
-                array[index]     = i.A;
-                array[index + 1] = i.R;
-                array[index + 2] = i.G;
-                array[index + 3] = i.B;
+                array[index]     = i.R;
+                array[index + 1] = i.G;
+                array[index + 2] = i.B;
+                array[index + 3] = i.A;
             }
             else
             {
@@ -539,7 +497,7 @@ namespace FoundationR
             {
                 for (int m = 0; m < width; m++)
                 {
-                    one.SetPixel(m + x, n + y, tex.GetPixel(m, Math.Abs(n - height)).color);
+                    one.SetPixel(m + x, n + y, tex.GetPixel(m, n).color);
                 }
             }
         }

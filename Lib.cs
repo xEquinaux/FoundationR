@@ -95,7 +95,7 @@ namespace FoundationR
                                 PreDrawEvent    .Invoke(this, new PreDrawArgs() { graphics = rewBatch });
                                 DrawEvent       .Invoke(this, new DrawingArgs() { graphics = rewBatch });
                                 CameraEvent     .Invoke(this, new CameraArgs() { graphics = b.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
-                                //rewBatch.Render(b.Graphics);
+                                rewBatch.Render(b.Graphics);
                                 b.Render();
                                 rewBatch.End();
                             }
@@ -152,8 +152,8 @@ namespace FoundationR
                             PreDraw(rewBatch);
                             Draw(rewBatch);
                             Camera(new CameraArgs(b.Graphics, viewport, bounds, offX, offY));
-                            rewBatch.Render(HDC);
-                            //b.Render();
+                            rewBatch.Render(b.Graphics);
+                            b.Render();
                             rewBatch.End();
                         }
                     }
