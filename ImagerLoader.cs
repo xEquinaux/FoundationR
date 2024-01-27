@@ -83,7 +83,6 @@ namespace FoundationR
         private int oldWidth, oldHeight;
         private Int32Rect backBufferRect => new Int32Rect(0, 0, width, height);
         private static REW BackBuffer;
-        private static Bitmap _backBuffer;
         public RewBatch(int width, int height)
         {
             Initialize(width, height);
@@ -92,7 +91,6 @@ namespace FoundationR
         {
             this.width = width;
             this.height = height;
-            _backBuffer = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         }
         public bool Resize(int width, int height)
         {
@@ -102,14 +100,13 @@ namespace FoundationR
                 this.oldWidth = width;
                 this.height = height;
                 this.oldHeight = height;
-                _backBuffer = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 return true;
             }
             return false;
         }
         public void Begin()
         {
-            BackBuffer = REW.CreateEmpty(width, height, PixelFormats.Bgr32);
+            BackBuffer = REW.Create(width, height, Color.Black, PixelFormats.Bgr32);
         }
         public void Draw(REW image, int x, int y)
         {
@@ -117,8 +114,9 @@ namespace FoundationR
         }
         public void Render(Graphics g)
         {
-            CreateBitmapFromByteArray(BackBuffer.GetPixels(), width, height);
-            g.DrawImage(_backBuffer, 0, 0, width, height);
+            Bitmap map = CreateBitmapFromByteArray(BackBuffer.GetPixels(), width, height);
+            g.DrawImage(map, 0, 0, width, height);
+            map.Dispose();
         }
         public void End()
         {
@@ -126,6 +124,7 @@ namespace FoundationR
         }
         Bitmap CreateBitmapFromByteArray(byte[] pixels, int width, int height)
         {
+            Bitmap _backBuffer = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             Rectangle rect = new Rectangle(0, 0, width, height);
             BitmapData bmpData = _backBuffer.LockBits(rect, ImageLockMode.WriteOnly, _backBuffer.PixelFormat);
             try
@@ -324,6 +323,43 @@ namespace FoundationR
                     num++;
                 }
             }
+        }
+        public static REW Extract(Bitmap bitmap, short bitsPerPixel)
+        {
+            PixelFormat format = default;
+            if (bitsPerPixel == 32)
+            {
+                format = PixelFormats.Bgr32;
+            }
+            else format = PixelFormats.Bgr24;
+            REW result = REW.CreateEmpty(bitmap.Width, bitmap.Height, format);
+            int num = 0;
+            result.i = bitmap.Width;
+            result.Width = (short)bitmap.Width;
+            result.Height = (short)bitmap.Height;
+            result.data = new byte[bitmap.Width * bitmap.Height * result.NumChannels + HeaderOffset];
+            result.data.AddHeader(new Point16(result.Width, result.Height), bitmap.Width * bitmap.Height * result.NumChannels + HeaderOffset, result.BitsPerPixel);
+            for (int j = 0; j < bitmap.Height; j++)
+            {
+                for (int i = 0; i < bitmap.Width; i++)
+                {
+                    Color c = bitmap.GetPixel(i, j);
+                    Pixel pixel = default;
+                    if (result.NumChannels == 4)
+                    {
+                        pixel = new Pixel(c.A, c.R, c.G, c.B);
+                    }
+                    else
+                    {
+                        pixel = new Pixel(c.R, c.G, c.B);
+                    }
+                    result.data.AppendPixel(num * result.NumChannels + HeaderOffset, pixel);
+                    pixel = null;
+                    num++;
+                }
+            }
+            bitmap.Dispose();
+            return result;
         }
         public void Write(BinaryWriter w)
         {
