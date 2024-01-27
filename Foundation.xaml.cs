@@ -20,8 +20,8 @@ namespace FoundationR
     }
     public partial class Foundation : Window
     {
-        public Image? wpfImage;
-        public Surface? windowHandle;
+        public Image wpfImage;
+        public Surface windowHandle;
         public void Run(SurfaceType type)
         {
             switch (type)

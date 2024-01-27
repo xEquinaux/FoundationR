@@ -9,4 +9,8 @@
 	<LangVersion>10</LangVersion>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="FoundationR_1.0.zip" />
+  </ItemGroup>
+
 </Project>

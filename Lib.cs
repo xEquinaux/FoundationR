@@ -35,7 +35,7 @@ namespace FoundationR
         bool flag = true, flag2 = true, init;
         public static int offX, offY;
         public static Rectangle bounds;
-        public static Camera? viewport;
+        public static Camera viewport;
         static BufferedGraphicsContext context = BufferedGraphicsManager.Current;
         static RewBatch rewBatch;
 
@@ -57,23 +57,15 @@ namespace FoundationR
             }
         }
 
-        void RegisterHooks()
+        public virtual void RegisterHooks()
         {
-            ResizeEvent += (s, e) => ResizeWindow();
-            InitializeEvent += (s, e) => Initialize();
-            LoadResourcesEvent += (s, e) => LoadResources();
-            MainMenuEvent += (s, e) => TitleScreen(e.graphics);
-            PreDrawEvent += (s, e) => PreDraw(e.graphics);
-            DrawEvent += (s, e) => Draw(e.graphics);
-            UpdateEvent += (s, e) => Update();
-            CameraEvent += (s, e) => Camera(e);
         }
         internal void Run(Dispatcher dispatcher, Image surface)
         {
             this.RegisterHooks();
             rewBatch = new RewBatch((int)surface.Width, (int)surface.Height);
-            new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => draw(ref flag, surface), dispatcher).Start();
-            update(ref flag2);
+            new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => update(ref flag2), dispatcher).Start();
+            draw(ref flag, surface);
             void draw(ref bool taskDone, Image surface)
             {
                 if (taskDone)
@@ -90,11 +82,11 @@ namespace FoundationR
                                 rewBatch.Begin();
                                 SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
                                 b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
-                                ResizeEvent     .Invoke(this, new EventArgs());
-                                MainMenuEvent   .Invoke(this, new DrawingArgs() { graphics = rewBatch });
-                                PreDrawEvent    .Invoke(this, new PreDrawArgs() { graphics = rewBatch });
-                                DrawEvent       .Invoke(this, new DrawingArgs() { graphics = rewBatch });
-                                CameraEvent     .Invoke(this, new CameraArgs() { graphics = b.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
+                                ResizeWindow(surface);
+                                TitleScreen(rewBatch);
+                                PreDraw(rewBatch);
+                                Draw(rewBatch);
+                                Camera(new CameraArgs(b.Graphics, viewport, bounds, offX, offY));
                                 rewBatch.Render(b.Graphics);
                                 b.Render();
                                 rewBatch.End();
@@ -107,19 +99,20 @@ namespace FoundationR
                     }
                     taskDone = true;
                 }
+                dispatcher.BeginInvoke(() => draw(ref flag, surface), DispatcherPriority.Background, null);
             }
             void update(ref bool taskDone)
             {
                 if (!init)
                 {
                     init = true;
-                    LoadResourcesEvent.Invoke(this, new EventArgs());
-                    InitializeEvent.Invoke(this, new InitializeArgs());
+                    LoadResources();
+                    Initialize();
                 }
                 if (taskDone)
-                { 
+                {
                     taskDone = false;
-                    UpdateEvent.Invoke(this, new UpdateArgs());
+                    Update();
                     taskDone = true;
                 }
                 dispatcher.BeginInvoke(() => update(ref flag2), DispatcherPriority.Background, null);
@@ -127,11 +120,11 @@ namespace FoundationR
         }
         internal void Run(Dispatcher dispatcher, Surface window)
         {
-            Form form = new SurfaceForm(window);
+            this.RegisterHooks();
+            window.form = new SurfaceForm(window);
             rewBatch = new RewBatch(window.Width, window.Height);
-            //this.RegisterHooks();
-            new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => draw(ref flag, window), dispatcher).Start();
-            update(ref flag2);
+            new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => update(ref flag2), dispatcher).Start();
+            draw(ref flag, window);
             void draw(ref bool taskDone, Surface surface)
             {
                 if (taskDone)
@@ -147,7 +140,7 @@ namespace FoundationR
                             rewBatch.Begin();
                             SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
                             b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
-                            ResizeWindow();
+                            ResizeWindow(window.form);
                             TitleScreen(rewBatch);
                             PreDraw(rewBatch);
                             Draw(rewBatch);
@@ -160,6 +153,7 @@ namespace FoundationR
                     DeleteObject(HDC);
                     taskDone = true;
                 }
+                dispatcher.BeginInvoke(() => draw(ref flag, window), DispatcherPriority.Background, null);
             }
             void update(ref bool taskDone)
             {
@@ -175,31 +169,11 @@ namespace FoundationR
                     Update();
                     taskDone = true;
                 }
-                dispatcher.BeginInvoke(() => update(ref flag2), DispatcherPriority.Background, null);
             }
-            form.ShowDialog();
+            window.form.ShowDialog();
         }
         #region events
-        public static event EventHandler<EventArgs> ResizeEvent;
-        public static event EventHandler<InitializeArgs> InitializeEvent;
-        public static event EventHandler<EventArgs> LoadResourcesEvent;
-        public static event EventHandler<DrawingArgs> MainMenuEvent;
-        public static event EventHandler<PreDrawArgs> PreDrawEvent;
-        public static event EventHandler<DrawingArgs> DrawEvent;
-        public static event EventHandler<UpdateArgs> UpdateEvent;
-        public static event EventHandler<CameraArgs> CameraEvent;
-        public class DrawingArgs : EventArgs
-        {
-            public RewBatch graphics;
-        }
-        public class PreDrawArgs : EventArgs
-        {
-            public RewBatch graphics;
-        }
-        public class UpdateArgs : EventArgs
-        {
-        }
-        public class CameraArgs : EventArgs
+        public class CameraArgs
         {
             public CameraArgs() { }
             public CameraArgs(Graphics g, Camera a, Rectangle r, int offX, int offY)
@@ -220,7 +194,10 @@ namespace FoundationR
         }
         #endregion
         #region methods
-        public virtual void ResizeWindow()
+        public virtual void ResizeWindow(Image surface)
+        {
+        }
+        public virtual void ResizeWindow(Form form)
         {
         }
         public virtual void LoadResources()
@@ -278,7 +255,7 @@ namespace FoundationR
         }
         #endregion
     }
-    public class Surface
+    public struct Surface
     {
         public Surface(int x, int y, int width, int height, string windowTitle)
         {
@@ -287,11 +264,12 @@ namespace FoundationR
             this.Width = width;
             this.Height = height;
             this.Title = windowTitle;
+            form = default;
         }
         public string? Title;
         public int Width, Height;
         public int X, Y;
-        internal Form? form;
+        public Form form;
     }
     public class Camera
     {
