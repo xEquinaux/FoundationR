@@ -11,8 +11,13 @@ namespace FoundationR
         Window = 0x00000001,
         IntersectRgn = 0x00000080
     }
-
-    public enum CompressionMethod : uint
+    public enum DIBColors : uint
+    {
+        DIB_RGB_COLORS = 0x00,
+        DIB_PAL_COLORS = 0x01,
+        DIB_PAL_INDICES = 0x02
+    }
+    public enum BitmapCompressionMode : uint
     {
         BI_RGB = 0,
         BI_RLE8 = 1,
