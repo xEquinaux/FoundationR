@@ -9,9 +9,11 @@ using System.Linq;
 using System.Management.Instrumentation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Markup;
 using System.Windows.Media;
@@ -78,8 +80,10 @@ namespace FoundationR
 
         private int stride => width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
         private int width, height;
+        private int oldWidth, oldHeight;
         private Int32Rect backBufferRect => new Int32Rect(0, 0, width, height);
         private static REW BackBuffer;
+        private static Bitmap _backBuffer;
         public RewBatch(int width, int height)
         {
             Initialize(width, height);
@@ -88,10 +92,24 @@ namespace FoundationR
         {
             this.width = width;
             this.height = height;
+            _backBuffer = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        }
+        public bool Resize(int width, int height)
+        {
+            if (oldWidth != width || oldHeight != height)
+            {
+                this.width = width;
+                this.oldWidth = width;
+                this.height = height;
+                this.oldHeight = height;
+                _backBuffer = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                return true;
+            }
+            return false;
         }
         public void Begin()
         {
-            BackBuffer = REW.Create(640, 480, Color.FromArgb(100, Color.White), PixelFormats.Bgr32);
+            BackBuffer = REW.CreateEmpty(width, height, PixelFormats.Bgr32);
         }
         public void Draw(REW image, int x, int y)
         {
@@ -99,9 +117,8 @@ namespace FoundationR
         }
         public void Render(Graphics g)
         {
-            Bitmap map = CreateBitmapFromByteArray(BackBuffer.GetPixels(), 640, 480);
-            g.DrawImage(map, 0, 0, 640, 480);
-            map.Dispose();
+            CreateBitmapFromByteArray(BackBuffer.GetPixels(), width, height);
+            g.DrawImage(_backBuffer, 0, 0, width, height);
         }
         public void End()
         {
@@ -109,18 +126,17 @@ namespace FoundationR
         }
         Bitmap CreateBitmapFromByteArray(byte[] pixels, int width, int height)
         {
-            Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             Rectangle rect = new Rectangle(0, 0, width, height);
-            BitmapData bmpData = bitmap.LockBits(rect, ImageLockMode.WriteOnly, bitmap.PixelFormat);
+            BitmapData bmpData = _backBuffer.LockBits(rect, ImageLockMode.WriteOnly, _backBuffer.PixelFormat);
             try
             {
                 Marshal.Copy(pixels, 0, bmpData.Scan0, pixels.Length);
             }
             finally
             {
-                bitmap.UnlockBits(bmpData);
+                _backBuffer.UnlockBits(bmpData);
             }
-            return bitmap;
+            return _backBuffer;
         }
     }
     public static class ImageLoader
@@ -308,6 +324,43 @@ namespace FoundationR
                     num++;
                 }
             }
+        }
+        public static REW Extract(Bitmap bitmap, short bitsPerPixel)
+        {
+            PixelFormat format = default;
+            if (bitsPerPixel == 32)
+            {
+                format = PixelFormats.Bgr32;
+            }
+            else format = PixelFormats.Bgr24;
+            REW result = REW.CreateEmpty(bitmap.Width, bitmap.Height, format);
+            int num = 0;
+            result.i = bitmap.Width;
+            result.Width = (short)bitmap.Width;
+            result.Height = (short)bitmap.Height;
+            result.data = new byte[bitmap.Width * bitmap.Height * result.NumChannels + HeaderOffset];
+            result.data.AddHeader(new Point16(result.Width, result.Height), bitmap.Width * bitmap.Height * result.NumChannels + HeaderOffset, result.BitsPerPixel);
+            for (int j = 0; j < bitmap.Height; j++)
+            {
+                for (int i = 0; i < bitmap.Width; i++)
+                {
+                    Color c = bitmap.GetPixel(i, j);
+                    Pixel pixel = default;
+                    if (result.NumChannels == 4)
+                    {
+                        pixel = new Pixel(c.A, c.R, c.G, c.B);
+                    }
+                    else
+                    {
+                        pixel = new Pixel(c.R, c.G, c.B);
+                    }
+                    result.data.AppendPixel(num * result.NumChannels + HeaderOffset, pixel);
+                    pixel = null;
+                    num++;
+                }
+            }
+            bitmap.Dispose();
+            return result;
         }
         public void Write(BinaryWriter w)
         {
@@ -497,9 +550,98 @@ namespace FoundationR
             {
                 for (int m = 0; m < width; m++)
                 {
-                    one.SetPixel(m + x, n + y, tex.GetPixel(m, n).color);
+                    Pixel _one = one.GetPixel(m + x, n + y);
+                    Pixel _two = tex.GetPixel(m, n);
+                    if (_two.A < 255)
+                    {
+                        PreMultiply(_one);
+                        PreMultiply(_two);
+                        one.SetPixel(m + x, n + y, _two.color.Blend(_one.color, 0.5d));
+                    }
+                    else one.SetPixel(m + x, n + y, _two.color);
                 }
             }
+            Pixel PreMultiply(Pixel pixel)
+            {
+                byte r = pixel.R;
+                byte g = pixel.G;
+                byte b = pixel.B;
+                byte a = pixel.A;
+                pixel.R = (byte)((r * a) / 255);
+                pixel.G = (byte)((g * a) / 255);
+                pixel.B = (byte)((b * a) / 255);
+                return pixel;
+            }
+        }
+    }
+    public class Composite
+    {
+        public Composite(string layerOneFile, string layerTwoFile, string outputFile)
+        {
+            // load the files
+            var layerOne = new BitmapImage(new Uri(layerOneFile, UriKind.Absolute));
+            var layerTwo = new BitmapImage(new Uri(layerTwoFile, UriKind.Absolute));
+
+            // create the destination based upon layer one
+            var composite = new WriteableBitmap(layerOne);
+
+            // premultiply the alpha values for layer one
+            composite = PremultiplyAlpha(composite);
+
+            // premultiply the alpha values for layer two
+            var _layerTwo = PremultiplyAlpha(new WriteableBitmap(layerTwo));
+
+            // copy the pixels from layer two on to the destination
+            int[] pixels = new int[(int)layerTwo.Width * (int)layerTwo.Height];
+            int stride = (int)(4 * layerTwo.Width);
+            _layerTwo.CopyPixels(pixels, stride, 0);
+            composite.WritePixels(new Int32Rect(0, 0, (int)layerTwo.Width, (int)layerTwo.Height), pixels, stride, 0);
+
+            // encode the bitmap to the output file
+            PngBitmapEncoder encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(composite));
+            using (var stream = new FileStream(outputFile, FileMode.Create))
+            {
+                encoder.Save(stream);
+            }
+        }
+
+        // premultiply the alpha values for a bitmap
+        private WriteableBitmap PremultiplyAlpha(WriteableBitmap bitmap)
+        {
+            int[] pixels = new int[(int)bitmap.Width * (int)bitmap.Height];
+            int stride = (int)(4 * bitmap.Width);
+            bitmap.CopyPixels(pixels, stride, 0);
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                byte a = (byte)(pixels[i] >> 24);
+                byte r = (byte)(pixels[i] >> 16);
+                byte g = (byte)(pixels[i] >> 8);
+                byte b = (byte)(pixels[i] >> 0);
+
+                r = (byte)((r * a) / 255);
+                g = (byte)((g * a) / 255);
+                b = (byte)((b * a) / 255);
+
+                pixels[i] = (a << 24) | (r << 16) | (g << 8) | (b << 0);
+            }
+
+            var result = new WriteableBitmap(bitmap);
+            result.WritePixels(new Int32Rect(0, 0, (int)bitmap.Width, (int)bitmap.Height), pixels, stride, 0);
+
+            return result;
+        }
+    }
+    public static class ColorExtensions
+    {
+        public static Color Blend(this Color color, Color backColor, double amount)
+        {
+            byte a = (byte)Math.Min(color.A + backColor.A, 255); // unknown
+            byte r = (byte)(color.R * amount + backColor.R * (1 - amount));
+            byte g = (byte)(color.G * amount + backColor.G * (1 - amount));
+            byte b = (byte)(color.B * amount + backColor.B * (1 - amount));
+            return Color.FromArgb(a, r, g, b);
         }
     }
 }
