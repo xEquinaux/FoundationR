@@ -25,7 +25,7 @@ namespace FoundationR
         [DllImport("user32.dll", EntryPoint = "FindWindow", SetLastError = true)]
         static extern IntPtr FindWindowByCaption(IntPtr ZeroOnly, string lpWindowName);
         [DllImport("gdi32.dll")]
-        static extern bool DeleteObject(IntPtr hObject);
+        public static extern bool DeleteObject(IntPtr hObject);
         [DllImport("user32.dll")]  
         static extern IntPtr GetDCEx(IntPtr hWnd, IntPtr hrgnClip, uint flags);
         [DllImport("user32.dll")]
@@ -95,7 +95,7 @@ namespace FoundationR
                                 PreDrawEvent    .Invoke(this, new PreDrawArgs() { graphics = rewBatch });
                                 DrawEvent       .Invoke(this, new DrawingArgs() { graphics = rewBatch });
                                 CameraEvent     .Invoke(this, new CameraArgs() { graphics = b.Graphics, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
-                                rewBatch.Render(b.Graphics);
+                                //rewBatch.Render(b.Graphics);
                                 b.Render();
                                 rewBatch.End();
                             }
@@ -152,8 +152,8 @@ namespace FoundationR
                             PreDraw(rewBatch);
                             Draw(rewBatch);
                             Camera(new CameraArgs(b.Graphics, viewport, bounds, offX, offY));
-                            rewBatch.Render(b.Graphics);
-                            b.Render();
+                            rewBatch.Render(HDC);
+                            //b.Render();
                             rewBatch.End();
                         }
                     }

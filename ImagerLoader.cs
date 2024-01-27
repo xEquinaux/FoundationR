@@ -35,10 +35,10 @@ namespace FoundationR
             switch (image.Header)
             { 
                 case BitmapHeader.BITMAPINFOHEADER:
-                    array = array.Concat(BITMAPINFOHEADER.CreateDIBHeader(image, out _)).ToArray();
+                    //array = array.Concat(BITMAPINFOHEADER.CreateDIBHeader(image, out _)).ToArray();
                     break;
                 case BitmapHeader.BITMAPV3INFOHEADER:
-                    array = array.Concat(BITMAPV3INFOHEADER.CreateDIBHeader(image, out _)).ToArray();
+                    //array = array.Concat(BITMAPV3INFOHEADER.CreateDIBHeader(image, out _)).ToArray();
                     break;
             }
             return array;
@@ -66,8 +66,14 @@ namespace FoundationR
     }
     public class RewBatch
     {
-        [DllImport("gdi32.dll", SetLastError = true)]
-        static extern IntPtr CreateDIBSection(IntPtr hdc, [In] ref BITMAPINFO pbmi, uint iUsage, out IntPtr ppbBits, IntPtr hSection, uint dwOffset);
+        [DllImport("gdi32.dll", EntryPoint = "CreateDIBSection", SetLastError = true)]
+        static extern IntPtr CreateDIBSection(IntPtr hdc, [In] ref BitmapInfo pbmi, uint pila, out IntPtr ppbBits, IntPtr hSection, uint dwOffset);
+        [DllImport("gdi32.dll")]
+        static extern IntPtr CreateBitmap(int nWidth, int nHeight, uint cPlanes, uint cBitsPerPel, IntPtr lpvBits);
+        [DllImport("user32.dll")]
+        static extern IntPtr GetDC(IntPtr hWnd);
+        [DllImport("user32.dll")]
+        static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
 
         private int stride => width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
         private int width, height;
@@ -81,7 +87,7 @@ namespace FoundationR
         {
             this.width = width;
             this.height = height;
-            BackBuffer = ImageLoader.BitmapIngest(new BitmapFile() { Value = (Bitmap)Bitmap.FromFile(@"C:\Users\nolan\source\repos\test_env\Textures\bluepane.png") }, PixelFormats.Bgr32);
+            //BackBuffer = ImageLoader.BitmapIngest(new BitmapFile() { Value = (Bitmap)Bitmap.FromFile(@"C:\Users\nolan\source\repos\test_env\Textures\bluepane.png") }, PixelFormats.Bgr32);
         }
         public void Begin()
         {
@@ -90,21 +96,74 @@ namespace FoundationR
         {
             //BackBuffer.Composite(image, x, y);
         }
-        public void Render(Graphics g)
+        public void Render(Graphics g, IntPtr hdc)
         {
-            byte[] array = BitmapFile.Create(BackBuffer);
-            var m = new MemoryStream();
+            BitmapInfoHeader bmih = new BitmapInfoHeader()
+            {
+                Width = 640,
+                Height = 480,
+                Planes = 1,
+                BitCount = 32,
+                Compression = (uint)BitmapCompressionMode.BI_BITFIELDS,
+                SizeImage = 640 * 480 * 4,
+                XPelsPerMeter = 0,
+                YPelsPerMeter = 0,
+                ClrUsed = 0,
+                ClrImportant = 0,
+                RedMask = 0x00FF0000,
+                GreenMask = 0x0000FF00,
+                BlueMask = 0x000000FF,
+                AlphaMask = 0xFF000000
+                
+            };
+            bmih.Size = (uint)Marshal.SizeOf(bmih);
+            BitmapInfo bmi = new BitmapInfo()
+            {
+                Header = bmih,
+                Colors = new RGBQuad[] { }
+            };
+            Bitmap map = default;
+            IntPtr hBitmap = CreateDIBSection(hdc, ref bmi, (uint)DIBColors.DIB_RGB_COLORS, out IntPtr ppbBits, IntPtr.Zero, 0);
+            if (hBitmap != default)
+            {
+                map = Bitmap.FromHbitmap(hBitmap);
+            }
+            ReleaseDC(IntPtr.Zero, hdc);
+            Foundation.DeleteObject(hBitmap);
+            /*
+             * byte[] array = BitmapFile.Create(BackBuffer);
+             * var m = new MemoryStream();
             
             m.Write(array, 0, array.Length);
             Bitmap a = (Bitmap)Bitmap.FromHbitmap(m);
             g.DrawImage(a, 0, 0, a.Width, a.Height);
             m.Dispose();
             array = null;
+            */
         }
         public void End()
         {
             BackBuffer = null;
         }
+        Bitmap CreateBitmapFromByteArray(byte[] pixels, int width, int height)
+        {
+            Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            Rectangle rect = new Rectangle(0, 0, width, height);
+            BitmapData bmpData = bitmap.LockBits(rect, ImageLockMode.WriteOnly, bitmap.PixelFormat);
+
+            try
+            {
+                Marshal.Copy(pixels, 0, bmpData.Scan0, pixels.Length);
+            }
+            finally
+            {
+                bitmap.UnlockBits(bmpData);
+            }
+
+            return bitmap;
+        }
+
     }
     public static class ImageLoader
     {
