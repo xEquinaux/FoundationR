@@ -99,7 +99,7 @@ namespace FoundationR
         }
         public static byte[] Create(int width, int height, byte[] arrayPixel, short bpp)
         {
-            REW image = REW.Dummy(width, height, arrayPixel, bpp);
+            REW image = REW.Create(width, height, arrayPixel, bpp);
             int headerSize = 14;
             byte[] dib = GetDIBHeader(image);
             byte[] header = BmpHeader(image, dib.Length + headerSize);
@@ -136,7 +136,7 @@ namespace FoundationR
         {
             this.width = width;
             this.height = height;       
-            Surface = REW.Dummy(this.width, this.height, new byte[this.width * this.height * BitsPerPixel], BitsPerPixel);
+            Surface = REW.Dummy(this.width, this.height, 32);
         }
         public bool Resize(int width, int height)
         {
@@ -152,46 +152,41 @@ namespace FoundationR
         }
         public void Begin()
         {
-            Surface = REW.Dummy(this.width, this.height, new byte[this.width * this.height * BitsPerPixel], BitsPerPixel);
-            //backBuffer = new byte[this.width * this.height * 4];
+            Surface = REW.Dummy(this.width, this.height, 32);
         }
         public void Draw(REW image, int x, int y)
         {
             Surface.Composite(image, x, y);
-            backBuffer = Surface.GetPixels();
-            //Array.Copy(image.GetPixels(), 0, backBuffer, y * this.width + x, Math.Min(image.RealLength, backBuffer.Length));
         }
         public void Render(Graphics g)
         {
-            //backBuffer = BitmapFile.Create(this.width, this.height, backBuffer, 32);
-            GCHandle handle = GCHandle.Alloc(backBuffer, GCHandleType.Pinned);
-            IntPtr hbitmap = CreateBitmap(this.width, this.height, 1, (uint)BitsPerPixel, handle.AddrOfPinnedObject());
-            handle.Free();
+            //GCHandle handle = GCHandle.Alloc(Surface.GetPixels(), GCHandleType.Pinned);
+            //IntPtr hbitmap = CreateBitmap(this.width, this.height, 1, (uint)BitsPerPixel, handle.AddrOfPinnedObject());
+            //handle.Free();
 
-            Bitmap map = (Bitmap)Bitmap.FromHbitmap(hbitmap);
-            g.DrawImage(map, 0, 0, width, height);
+            Bitmap map = CreateBitmapFromByteArray(Surface.GetPixels(), this.width, this.height);
+            g.DrawImage(map, 0, 0);
             map.Dispose();
-            Foundation.DeleteObject(hbitmap);
+            //Foundation.DeleteObject(hbitmap);
         }
         public void End()
         {
             Surface = null;
-            backBuffer = null;
         }
         Bitmap CreateBitmapFromByteArray(byte[] pixels, int width, int height)
         {
-            Bitmap _backBuffer = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             Rectangle rect = new Rectangle(0, 0, width, height);
-            BitmapData bmpData = _backBuffer.LockBits(rect, ImageLockMode.WriteOnly, _backBuffer.PixelFormat);
+            BitmapData bmpData = bitmap.LockBits(rect, ImageLockMode.WriteOnly, bitmap.PixelFormat);
             try
             {
                 Marshal.Copy(pixels, 0, bmpData.Scan0, pixels.Length);
             }
             finally
             {
-                _backBuffer.UnlockBits(bmpData);
+                bitmap.UnlockBits(bmpData);
             }
-            return _backBuffer;
+            return bitmap;
         }
     }
     public static class ImageLoader
@@ -280,27 +275,40 @@ namespace FoundationR
         public short BitsPerPixel { get; private set; }
         public int Count => (data.Length - HeaderOffset) / NumChannels;
         public int RealLength => data.Length - HeaderOffset;
-        public int NumChannels => BitsPerPixel >= 32 ? 4 : 3;
+        public int NumChannels => BitsPerPixel / 8;
         public BitmapHeader Header => NumChannels == 4 ? BitmapHeader.BITMAPV2INFOHEADER : BitmapHeader.BITMAPINFOHEADER;
         public static REW Create(int width, int height, Color color, PixelFormat format)
         {
             return new REW(width, height, color, format);
         }
+        public static REW Create(int width, int height, in byte[] pixels, short bpp)
+        {
+            return new REW(width, height, pixels, bpp);
+        }
         public static REW CreateEmpty(int width, int height, PixelFormat format)
         {
             return new REW(width, height, default, format);
         }
-        public static REW Dummy(int width, int height, byte[] pixels, short bpp)
+        public static REW Dummy(int width, int height, short bpp)
         {
-            return new REW(width, height, pixels, bpp);
+            return new REW(width, height, bpp);
         }
         private REW() { }
-        private REW(int width, int height, byte[] pixels, short bpp)
+        private REW(int width, int height, short bpp)
         {
             this.BitsPerPixel = bpp;
             this.Width = (short)width;
             this.Height = (short)height;
             this.data = new byte[Width * Height * NumChannels + HeaderOffset];
+            WriteHeader(this);
+            WriteDataChunk(this, default);
+        }
+        private REW(int width, int height, byte[] pixels, short bpp)
+        {
+            this.BitsPerPixel = bpp;
+            this.Width = (short)width;
+            this.Height = (short)height;
+            this.data = new byte[HeaderOffset];
             WriteHeader(this);
             this.data = this.data.Concat(pixels).ToArray();
         }
@@ -606,12 +614,12 @@ namespace FoundationR
             {
                 for (int m = 0; m < width; m++)
                 {
+                    if (n > one.Height || m > one.Width)
+                        continue;
                     Pixel _one = one.GetPixel(m + x, n + y);
                     Pixel _two = tex.GetPixel(m, n);
                     if (_two.A < 255)
                     {
-                        PreMultiply(_one);
-                        PreMultiply(_two);
                         one.SetPixel(m + x, n + y, _two.color.Blend(_one.color, 0.5d));
                     }
                     else one.SetPixel(m + x, n + y, _two.color);
