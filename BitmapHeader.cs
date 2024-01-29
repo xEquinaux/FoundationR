@@ -81,7 +81,7 @@ namespace FoundationR
     public struct BitmapV2InfoHeader
     {
         //Should equal 124
-        public uint Size;   
+        public uint Size;
         public int Width;
         public int Height;
         public ushort Planes;
@@ -153,36 +153,39 @@ namespace FoundationR
         }
         public static byte[] CreateDIBHeader(REW rew, out BitmapV2InfoHeader header)
         {
-            int num = -4;
             header = new BitmapV2InfoHeader();
-            uint size = (uint)Marshal.SizeOf(header);
+            uint size = 124;
             byte[] array = new byte[size];
-            Array.Copy(BitConverter.GetBytes(size), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.Width = (int)rew.Width), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.Height = (int)rew.Height), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.Planes = 1), 0, array, num += 2, 2);
-            Array.Copy(BitConverter.GetBytes(header.BitCount = 32), 0, array, num += 2, 2);
-            Array.Copy(BitConverter.GetBytes(header.Compression = (uint)BitmapCompressionMode.BI_BITFIELDS), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.SizeImage = (uint)rew.RealLength), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.XPelsPerMeter = 96), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.YPelsPerMeter = 96), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.ClrUsed = 0), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.ClrImportant = 0), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.RedMask = 0x00FF0000), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.GreenMask = 0x0000FF00), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.BlueMask = 0x000000FF), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.AlphaMask = 0xFF000000), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.CSType = BitConverter.ToUInt32(new byte[] { 32, 110, 106, 87 }, 0)), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.ciexyzX), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.ciexyzY), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.ciexyzX2), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.ciexyzY2), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.ciexyzX3), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.ciexyzY3), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.GammaRed = 0), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.GammaGreen = 0), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.GammaBlue = 0), 0, array, num += 4, 4);
+            Array.Copy(BitConverter.GetBytes(size), 0, array, 0, 4);
+            Array.Copy(BitConverter.GetBytes(header.Width = (int)rew.Width), 0, array, 4, 4);
+            Array.Copy(BitConverter.GetBytes(header.Height = (int)rew.Height), 0, array, 8, 4);
+            Array.Copy(BitConverter.GetBytes(header.Planes = 1), 0, array, 10, 2);
+            Array.Copy(BitConverter.GetBytes(header.BitCount = (ushort)rew.BitsPerPixel), 0, array, 12, 2);
+            Array.Copy(BitConverter.GetBytes(header.Compression = (uint)BitmapCompressionMode.BI_BITFIELDS), 0, array, 16, 4);
+            Array.Copy(BitConverter.GetBytes(header.SizeImage = (uint)rew.RealLength), 0, array, 20, 4);
+            Array.Copy(BitConverter.GetBytes(header.XPelsPerMeter = 96), 0, array, 24, 4);
+            Array.Copy(BitConverter.GetBytes(header.YPelsPerMeter = 96), 0, array, 28, 4);
+            Array.Copy(BitConverter.GetBytes(header.ClrUsed = 0), 0, array, 32, 4);
+            Array.Copy(BitConverter.GetBytes(header.ClrImportant = 0), 0, array, 36, 4);
+            Array.Copy(BitConverter.GetBytes(header.BlueMask = 0x000000FF), 0, array, 40, 4);
+            Array.Copy(BitConverter.GetBytes(header.GreenMask = 0x0000FF00), 0, array, 44, 4);
+            Array.Copy(BitConverter.GetBytes(header.RedMask = 0x00FF0000), 0, array, 48, 4);
+            Array.Copy(BitConverter.GetBytes(header.AlphaMask = 0xFF000000), 0, array, 52, 4);
+            header.CSType = BitConverter.ToUInt32(new byte[] { 32, 110, 106, 87 }, 0);
+            Array.Copy(new byte[] { 32, 110, 106, 87 }, 0, array, 56, 4);
+            //  At this point, the rest of the header is basically all 0's
+            Array.Copy(new byte[64], 0, array, 60, 64);
             return array;
+            //Array.Copy(BitConverter.GetBytes(header.ciexyzX), 0, array, 60, 4);
+            //Array.Copy(BitConverter.GetBytes(header.ciexyzY), 0, array, 64, 4);
+            //Array.Copy(BitConverter.GetBytes(header.ciexyzX2), 0, array, 68, 4);
+            //Array.Copy(BitConverter.GetBytes(header.ciexyzY2), 0, array, 72, 4);
+            //Array.Copy(BitConverter.GetBytes(header.ciexyzX3), 0, array, 76, 4);
+            //Array.Copy(BitConverter.GetBytes(header.ciexyzY3), 0, array, 80, 4);
+            //Array.Copy(BitConverter.GetBytes(header.GammaRed = 0), 0, array, 84, 4);
+            //Array.Copy(BitConverter.GetBytes(header.GammaGreen = 0), 0, array, 88, 4);
+            //Array.Copy(BitConverter.GetBytes(header.GammaBlue = 0), 0, array, 92, 4);
+            //return array;
         }
     }
     [StructLayout(LayoutKind.Sequential)]
@@ -299,7 +302,7 @@ namespace FoundationR
         public uint biProfileData;
         public uint biProfileSize;
         public uint biReserved;
-                                                                     
+
         public void Init()
         {
             biSize = (uint)Marshal.SizeOf(this);
@@ -359,7 +362,8 @@ namespace FoundationR
             Array.Copy(BitConverter.GetBytes(header.biGreenMask = 0x0000FF00), 0, array, num += 4, 4);
             Array.Copy(BitConverter.GetBytes(header.biBlueMask = 0x000000FF), 0, array, num += 4, 4);
             Array.Copy(BitConverter.GetBytes(header.biAlphaMask = 0xFF000000), 0, array, num += 4, 4);
-            Array.Copy(BitConverter.GetBytes(header.biCSType = BitConverter.ToUInt32(new byte[] { 32, 110, 106, 87 }, 0)), 0, array, num += 4, 4);
+            header.biCSType = BitConverter.ToUInt32(new byte[] { 32, 110, 106, 87 }, 0);
+            Array.Copy(new byte[] { 32, 110, 106, 87 }, 0, array, num += 4, 4);
             Array.Copy(BitConverter.GetBytes(header.ciexyzX), 0, array, num += 4, 4);
             Array.Copy(BitConverter.GetBytes(header.ciexyzY), 0, array, num += 4, 4);
             Array.Copy(BitConverter.GetBytes(header.ciexyzX2), 0, array, num += 4, 4);

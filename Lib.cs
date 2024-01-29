@@ -60,10 +60,10 @@ namespace FoundationR
         public virtual void RegisterHooks()
         {
         }
-        internal void Run(Dispatcher dispatcher, Image surface)
+        internal void Run(Dispatcher dispatcher, Image surface, int bitsPerPixel = 32)
         {
             this.RegisterHooks();
-            rewBatch = new RewBatch((int)surface.Width, (int)surface.Height);
+            rewBatch = new RewBatch((int)surface.Width, (int)surface.Height, bitsPerPixel);
             new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => update(ref flag2), dispatcher).Start();
             draw(ref flag, surface);
             void draw(ref bool taskDone, Image surface)
@@ -122,7 +122,7 @@ namespace FoundationR
         {
             this.RegisterHooks();
             window.form = new SurfaceForm(window);
-            rewBatch = new RewBatch(window.Width, window.Height);
+            rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
             new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => update(ref flag2), dispatcher).Start();
             draw(ref flag, window);
             void draw(ref bool taskDone, Surface surface)
@@ -140,7 +140,10 @@ namespace FoundationR
                             rewBatch.Begin();
                             SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
                             b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
-                            ResizeWindow(window.form);
+                            if (ResizeWindow(window.form, rewBatch))
+                            {
+                                rewBatch = new RewBatch(width, height, window.BitsPerPixel);
+                            }
                             TitleScreen(rewBatch);
                             PreDraw(rewBatch);
                             Draw(rewBatch);
@@ -197,8 +200,9 @@ namespace FoundationR
         public virtual void ResizeWindow(Image surface)
         {
         }
-        public virtual void ResizeWindow(Form form)
+        public virtual bool ResizeWindow(Form form, RewBatch graphcis)
         {
+            return false;
         }
         public virtual void LoadResources()
         {
@@ -257,18 +261,20 @@ namespace FoundationR
     }
     public struct Surface
     {
-        public Surface(int x, int y, int width, int height, string windowTitle)
+        public Surface(int x, int y, int width, int height, string windowTitle, int bitsPerPixel)
         {
             this.X = x;
             this.Y = y;
             this.Width = width;
             this.Height = height;
             this.Title = windowTitle;
+            this.BitsPerPixel = bitsPerPixel;
             form = default;
         }
         public string? Title;
         public int Width, Height;
         public int X, Y;
+        public int BitsPerPixel;
         public Form form;
     }
     public class Camera
