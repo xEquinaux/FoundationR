@@ -32,6 +32,8 @@ namespace FoundationR
     }
     public enum BitmapHeader : int
     {
+        WINNTBITMAPHEADER,
+        WIN4XBITMAPHEADER,
         BITMAPINFOHEADER,
         BITMAPV2INFOHEADER,
         BITMAPV3INFOHEADER,

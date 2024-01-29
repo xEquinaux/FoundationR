@@ -7,6 +7,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Management.Instrumentation;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -40,11 +41,37 @@ namespace FoundationR
                 case BitmapHeader.BITMAPINFOHEADER:
                     array = array.Concat(BITMAPINFOHEADER.CreateDIBHeader(image, out _)).ToArray();
                     break;
+                case BitmapHeader.BITMAPV2INFOHEADER:
+                    array = array.Concat(BitmapV2InfoHeader.CreateDIBHeader(image, out _))
+                                 .Concat(AppendChunkToDIB(false)).ToArray();
+                    break;
                 case BitmapHeader.BITMAPV3INFOHEADER:
-                    array = array.Concat(BITMAPV3INFOHEADER.CreateDIBHeader(image, out _)).ToArray();
+                    array = array.Concat(BITMAPV3INFOHEADER.CreateDIBHeader(image, out _))
+                                 .Concat(AppendChunkToDIB(true)).ToArray();
                     break;
             }
             return array;
+        }
+        static byte[] AppendChunkToDIB(bool alphaAppend)
+        {
+            byte[] array = new byte[]
+            {
+                0,   0,   0,   0,
+                0,   0,   0,   0,
+                0,   0,   0,   0,
+                0,   0, 
+                255, 0,   0,   0,
+                0,   255, 0,   0,
+                0,   0,   255, 0
+            };
+            if (alphaAppend)
+            { 
+                return array.Concat(new byte[]
+                {
+                    0,   0,   0,   255
+                }).ToArray();
+            }
+            else return array;
         }
         static byte[] GetDataBuffer(REW image)
         {
@@ -81,8 +108,9 @@ namespace FoundationR
         private int stride => width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
         private int width, height;
         private int oldWidth, oldHeight;
+        private byte[] backBuffer;
         private Int32Rect backBufferRect => new Int32Rect(0, 0, width, height);
-        private static REW BackBuffer;
+        private static REW Surface;
         public RewBatch(int width, int height)
         {
             Initialize(width, height);
@@ -106,21 +134,33 @@ namespace FoundationR
         }
         public void Begin()
         {
-            BackBuffer = REW.Create(width, height, Color.Black, PixelFormats.Bgr32);
+            backBuffer = new byte[this.width * this.height * 4];
         }
         public void Draw(REW image, int x, int y)
         {
-            BackBuffer.Composite(image, x, y);
+            Array.Copy(image.GetPixels(), 0, backBuffer, y * this.width + x, Math.Min(image.RealLength, backBuffer.Length));
         }
         public void Render(Graphics g)
         {
-            Bitmap map = CreateBitmapFromByteArray(BackBuffer.GetPixels(), width, height);
-            g.DrawImage(map, 0, 0, width, height);
-            map.Dispose();
+            using (FileStream file = new FileStream(@"C:\Users\nolan\Desktop\Untitled_Gimp2.6_argb.bmp", FileMode.Open))
+            {
+                byte[] bytes = new byte[200];
+                file.Read(bytes, 0, 200);
+                file.Seek(0, SeekOrigin.Begin);
+
+                Bitmap map = (Bitmap)Bitmap.FromStream(file); 
+                g.DrawImage(map, 0, 0, width, height);
+                map.Dispose();
+            }
+            //MemoryStream mem = new MemoryStream(backBuffer);
+            //Bitmap map = (Bitmap)Bitmap.FromStream(mem);
+            //g.DrawImage(map, 0, 0, width, height);
+            //mem.Dispose();
+            //map.Dispose();
         }
         public void End()
         {
-            BackBuffer = null;
+            backBuffer = null;
         }
         Bitmap CreateBitmapFromByteArray(byte[] pixels, int width, int height)
         {
@@ -218,7 +258,6 @@ namespace FoundationR
     public partial class REW
     {
         byte[] data;
-        int i;
         public static readonly int HeaderOffset = 10;
         public short Width { get; private set; } 
         public short Height { get; private set; }
@@ -226,7 +265,7 @@ namespace FoundationR
         public int Count => (data.Length - HeaderOffset) / NumChannels;
         public int RealLength => data.Length - HeaderOffset;
         public int NumChannels => BitsPerPixel >= 32 ? 4 : 3;
-        public BitmapHeader Header => NumChannels == 4 ? BitmapHeader.BITMAPV3INFOHEADER : BitmapHeader.BITMAPINFOHEADER;
+        public BitmapHeader Header => NumChannels == 4 ? BitmapHeader.BITMAPV2INFOHEADER : BitmapHeader.BITMAPINFOHEADER;
         public static REW Create(int width, int height, Color color, PixelFormat format)
         {
             return new REW(width, height, color, format);
@@ -238,7 +277,6 @@ namespace FoundationR
         private REW() { }
         private REW(int width, int height, Color color, PixelFormat format)
         {
-            this.i = width;
             this.BitsPerPixel = (short)format.BitsPerPixel;
             this.Width = (short)width;
             this.Height = (short)height;
@@ -299,7 +337,6 @@ namespace FoundationR
         public void Extract(Bitmap bitmap)
         {
             int num = 0;
-            this.i = bitmap.Width;
             this.Width = (short)bitmap.Width;
             this.Height = (short)bitmap.Height;
             this.data = new byte[bitmap.Width * bitmap.Height * NumChannels + HeaderOffset];
@@ -324,40 +361,31 @@ namespace FoundationR
                 }
             }
         }
-        public static REW Extract(Bitmap bitmap, short bitsPerPixel)
+        public static REW Extract(Bitmap bitmap, short bitsPerPixel, int pixelArrayOffset = 54)
         {
             PixelFormat format = default;
+            System.Drawing.Imaging.PixelFormat bmpf = default;
             if (bitsPerPixel == 32)
             {
                 format = PixelFormats.Bgr32;
+                bmpf = System.Drawing.Imaging.PixelFormat.Format32bppArgb;
             }
-            else format = PixelFormats.Bgr24;
+            else 
+            {
+                format = PixelFormats.Bgr24;
+                bmpf = System.Drawing.Imaging.PixelFormat.Format24bppRgb;
+            }
+            
             REW result = REW.CreateEmpty(bitmap.Width, bitmap.Height, format);
-            int num = 0;
-            result.i = bitmap.Width;
+            
             result.Width = (short)bitmap.Width;
             result.Height = (short)bitmap.Height;
             result.data = new byte[bitmap.Width * bitmap.Height * result.NumChannels + HeaderOffset];
             result.data.AddHeader(new Point16(result.Width, result.Height), bitmap.Width * bitmap.Height * result.NumChannels + HeaderOffset, result.BitsPerPixel);
-            for (int j = 0; j < bitmap.Height; j++)
-            {
-                for (int i = 0; i < bitmap.Width; i++)
-                {
-                    Color c = bitmap.GetPixel(i, j);
-                    Pixel pixel = default;
-                    if (result.NumChannels == 4)
-                    {
-                        pixel = new Pixel(c.A, c.R, c.G, c.B);
-                    }
-                    else
-                    {
-                        pixel = new Pixel(c.R, c.G, c.B);
-                    }
-                    result.data.AppendPixel(num * result.NumChannels + HeaderOffset, pixel);
-                    pixel = null;
-                    num++;
-                }
-            }
+            
+            BitmapData data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bmpf);
+            Marshal.Copy(data.Scan0, result.data, HeaderOffset, bitmap.Width * bitmap.Height * 4);
+            bitmap.UnlockBits(data);
             bitmap.Dispose();
             return result;
         }
@@ -375,7 +403,7 @@ namespace FoundationR
             BitsPerPixel = br.ReadInt16();
             data = new byte[(len - HeaderOffset) * NumChannels];
             data.AddHeader(size, len, BitsPerPixel);
-            this.i = Width = size.X;
+            Width = size.X;
             Height = size.Y;
             for (int i = HeaderOffset; i < data.Length; i += NumChannels)
             {
