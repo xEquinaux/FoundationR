@@ -23,6 +23,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
 using static FoundationR.REW;
+using static System.Net.Mime.MediaTypeNames;
 using Color = System.Drawing.Color;
 using MessageBox = System.Windows.Forms.MessageBox;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
@@ -127,6 +128,8 @@ namespace FoundationR
         private byte[] backBuffer;
         private Int32Rect backBufferRect => new Int32Rect(0, 0, width, height);
         private static REW Surface;
+        private static Bitmap BackBuffer;
+        BitmapData bmpData;
         public RewBatch(int width, int height, int bitsPerPixel = 32)
         {
             Initialize(width, height);
@@ -135,8 +138,8 @@ namespace FoundationR
         void Initialize(int width, int height)
         {
             this.width = width;
-            this.height = height;       
-            Surface = REW.Dummy(this.width, this.height, 32);
+            this.height = height;
+            BackBuffer = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
         }
         public bool Resize(int width, int height)
         {
@@ -146,32 +149,27 @@ namespace FoundationR
                 this.oldWidth = width;
                 this.height = height;
                 this.oldHeight = height;
+                BackBuffer = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
                 return true;
             }
             return false;
         }
         public void Begin()
         {
-            Surface = REW.Dummy(this.width, this.height, 32);
         }
         public void Draw(REW image, int x, int y)
         {
-            Surface.Composite(image, x, y);
+            Rectangle rect = new Rectangle(0, 0, this.width, this.height);
+            bmpData = BackBuffer.LockBits(rect, ImageLockMode.WriteOnly, BackBuffer.PixelFormat);
+            Marshal.Copy(image.GetPixels(), y * image.Width + x, bmpData.Scan0, Math.Min(this.width * this.height * (BitsPerPixel / 8), image.RealLength));
+            BackBuffer.UnlockBits(bmpData);
         }
         public void Render(Graphics g)
         {
-            //GCHandle handle = GCHandle.Alloc(Surface.GetPixels(), GCHandleType.Pinned);
-            //IntPtr hbitmap = CreateBitmap(this.width, this.height, 1, (uint)BitsPerPixel, handle.AddrOfPinnedObject());
-            //handle.Free();
-
-            Bitmap map = CreateBitmapFromByteArray(Surface.GetPixels(), this.width, this.height);
-            g.DrawImage(map, 0, 0);
-            map.Dispose();
-            //Foundation.DeleteObject(hbitmap);
+            g.DrawImage(BackBuffer, 0, 0);
         }
         public void End()
         {
-            Surface = null;
         }
         Bitmap CreateBitmapFromByteArray(byte[] pixels, int width, int height)
         {
