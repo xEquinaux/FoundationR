@@ -180,26 +180,21 @@ namespace FoundationR
                 Height = this.height,
                 Planes = 1,
                 BitCount = 32,
-                Compression = (uint)BitmapCompressionMode.BI_RGB,
+                Compression = (uint)BitmapCompressionMode.BI_BITFIELDS,
                 SizeImage = (uint)(this.width * this.height * (BitsPerPixel / 8)),
                 XPelsPerMeter = 96,
-                YPelsPerMeter = 96
+                YPelsPerMeter = 96,
+                RedMask = 0x00FF0000,
+                GreenMask = 0x0000FF00,
+                BlueMask = 0x000000FF,
+                AlphaMask = 0xFF000000,
+                CSType = BitConverter.ToUInt32(new byte[] { 32, 110, 106, 87 }, 0)
             };
-            // create bitmap out of pixel array
-            //IntPtr hbitmap = CreateBitmap(this.width, this.height, 1, (uint)BitsPerPixel, backBuffer);
-            //IntPtr oldhbitmap = SelectObject(hdc, hbitmap);
-
-            // display the bitmap onto the hdc
             GCHandle h = GCHandle.Alloc(bmih, GCHandleType.Pinned);
             GCHandle h2 = GCHandle.Alloc(backBuffer, GCHandleType.Pinned);
             SetDIBitsToDevice(hdc, 0, 0, this.width, this.height, 0, 0, 0, this.height, h2.AddrOfPinnedObject(), h.AddrOfPinnedObject(), 0);
             h.Free();
             h2.Free();
-
-            // free resources
-            //SelectObject(hdc, oldhbitmap);
-            //Foundation.DeleteObject(hbitmap);
-            //Foundation.DeleteObject(oldhbitmap);
             ReleaseDC(IntPtr.Zero, hdc);
             backBuffer = null;
         }
@@ -212,28 +207,24 @@ namespace FoundationR
                     int index = (i * imageWidth + j) * 4;
                     int bufferIndex = ((y + i) * bufferWidth + (x + j)) * 4;
 
-                    buffer[bufferIndex] = image[index];
-                    buffer[bufferIndex + 1] = image[index + 1];
-                    buffer[bufferIndex + 2] = image[index + 2];
-                    buffer[bufferIndex + 3] = image[index + 3];
+                    if (bufferIndex >= buffer.Length)
+                        return;
+                    Pixel back = new Pixel(buffer[bufferIndex], buffer[bufferIndex + 1], buffer[bufferIndex + 2], buffer[bufferIndex + 3]);
+                    Pixel fore = new Pixel(image[Math.Min(index, image.Length - 1)], image[Math.Min(index + 1, image.Length - 1)], image[Math.Min(index + 2, image.Length - 1)], image[Math.Min(index + 3, image.Length - 1)]);
+
+                    fore.Composite(back);
+
+                    buffer[bufferIndex]     = fore.R;
+                    buffer[bufferIndex + 1] = fore.G;
+                    buffer[bufferIndex + 2] = fore.B;
+                    buffer[bufferIndex + 3] = fore.A;
+
+                    /*buffer[bufferIndex]     = image[Math.Min(index, image.Length - 1)];
+                      buffer[bufferIndex + 1] = image[Math.Min(index + 1, image.Length - 1)];
+                      buffer[bufferIndex + 2] = image[Math.Min(index + 2, image.Length - 1)];
+                      buffer[bufferIndex + 3] = image[Math.Min(index + 3, image.Length - 1)]; */
                 }
             }
-        }
-
-        Bitmap CreateBitmapFromByteArray(byte[] pixels, int width, int height)
-        {
-            Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            Rectangle rect = new Rectangle(0, 0, width, height);
-            BitmapData bmpData = bitmap.LockBits(rect, ImageLockMode.WriteOnly, bitmap.PixelFormat);
-            try
-            {
-                Marshal.Copy(pixels, 0, bmpData.Scan0, pixels.Length);
-            }
-            finally
-            {
-                bitmap.UnlockBits(bmpData);
-            }
-            return bitmap;
         }
     }
     public static class ImageLoader
@@ -558,9 +549,39 @@ namespace FoundationR
             this.B = B;
             this.hasAlpha = false;
         }
+        public static Pixel Extract32bit(byte[] buffer)
+        {
+            return new Pixel
+            (
+                buffer[0],
+                buffer[1],
+                buffer[2],
+                buffer[3]
+            );
+        }
+        public static Pixel Extract24bit(byte[] buffer)
+        {
+            return new Pixel
+            (
+                buffer[0],
+                buffer[1],
+                buffer[2]
+            );
+        }
+        public void SetColor(Color color)
+        {
+            R = color.R;
+            G = color.G;
+            B = color.B;
+            A = color.A;
+        }
         public byte A = 255, R, G, B;
         public byte[] Buffer => hasAlpha ? new byte[] { R, G, B, A } : new byte[] { R, G, B };
         public Color color => Color.FromArgb(A, R, G, B);
+        public override string ToString()
+        {
+            return $"ARGB=({A}, {R}, {G}, {B})";
+        }
     }
     public struct Point16
     {
@@ -672,17 +693,26 @@ namespace FoundationR
                     else one.SetPixel(m + x, n + y, _two.color);
                 }
             }
-            Pixel PreMultiply(Pixel pixel)
+        }
+        public static Pixel Composite(this Pixel back, Pixel fore)
+        {
+            if (fore.A < 255)
             {
-                byte r = pixel.R;
-                byte g = pixel.G;
-                byte b = pixel.B;
-                byte a = pixel.A;
-                pixel.R = (byte)((r * a) / 255);
-                pixel.G = (byte)((g * a) / 255);
-                pixel.B = (byte)((b * a) / 255);
-                return pixel;
+                back.SetColor(back.color.Blend(fore.color, 0.5d));
             }
+            else back = fore;
+            return back;
+        }
+        public static Pixel PreMultiply(this Pixel pixel)
+        {
+            byte r = pixel.R;
+            byte g = pixel.G;
+            byte b = pixel.B;
+            byte a = pixel.A;
+            pixel.R = (byte)((r * a) / 255);
+            pixel.G = (byte)((g * a) / 255);
+            pixel.B = (byte)((b * a) / 255);
+            return pixel;
         }
     }
     public class Composite
@@ -748,7 +778,7 @@ namespace FoundationR
     {
         public static Color Blend(this Color color, Color backColor, double amount)
         {
-            byte a = (byte)Math.Min(color.A + backColor.A, 255); // unknown
+            byte a = color.A; // unknown
             byte r = (byte)(color.R * amount + backColor.R * (1 - amount));
             byte g = (byte)(color.G * amount + backColor.G * (1 - amount));
             byte b = (byte)(color.B * amount + backColor.B * (1 - amount));

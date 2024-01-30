@@ -127,27 +127,16 @@ namespace FoundationR
             rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
             new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => update(ref flag2), dispatcher).Start();
             IntPtr HDC = IntPtr.Zero;
-            Graphics g = default;
-            BufferedGraphics b = default;
             draw(ref flag, window);
             void draw(ref bool taskDone, Surface surface)
             {
                 int width = (int)surface.Width;
                 int height = (int)surface.Height;
-                if (!init2)
-                {
-                    init2 = true;
-                    HDC = GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403);
-                    g = Graphics.FromHdc(HDC);
-                    b = context.Allocate(g, new Rectangle(00, 0, width, height));
-                }
                 if (taskDone)
                 {
                     taskDone = false;
                     {
                         rewBatch.Begin(GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
-                        SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
-                        b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
                         if (ResizeWindow(window.form, rewBatch))
                         {
                             rewBatch = new RewBatch(width, height, window.BitsPerPixel);
@@ -155,8 +144,7 @@ namespace FoundationR
                         TitleScreen(rewBatch);
                         PreDraw(rewBatch);
                         Draw(rewBatch);
-                        Camera(new CameraArgs(b.Graphics, viewport, bounds, offX, offY));
-                        b.Render();
+                        Camera(viewport, bounds, offX, offY);
                         rewBatch.End();
                     }
                     taskDone = true;
@@ -226,6 +214,17 @@ namespace FoundationR
         }
         public virtual void Update()
         {
+        }
+        public virtual void Camera(Camera CAMERA, Rectangle screen, int offX, int offY)
+        {
+            if (CAMERA == null)
+                return;
+            if (CAMERA.follow && CAMERA.isMoving)
+            {
+                screen.X = (int)-CAMERA.position.X + screen.Width / 2 - offX;
+                screen.Y = (int)-CAMERA.position.Y + screen.Height / 2 - offY;
+            }
+            CAMERA.oldPosition = CAMERA.position;
         }
         public virtual void Camera(CameraArgs e)
         {
