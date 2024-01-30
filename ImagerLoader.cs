@@ -23,8 +23,10 @@ using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
+using System.Xml;
 using static FoundationR.REW;
 using static System.Net.Mime.MediaTypeNames;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 using Color = System.Drawing.Color;
 using MessageBox = System.Windows.Forms.MessageBox;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
@@ -209,20 +211,25 @@ namespace FoundationR
 
                     if (bufferIndex >= buffer.Length)
                         return;
-                    Pixel back = new Pixel(buffer[bufferIndex], buffer[bufferIndex + 1], buffer[bufferIndex + 2], buffer[bufferIndex + 3]);
-                    Pixel fore = new Pixel(image[Math.Min(index, image.Length - 1)], image[Math.Min(index + 1, image.Length - 1)], image[Math.Min(index + 2, image.Length - 1)], image[Math.Min(index + 3, image.Length - 1)]);
+                    Pixel back = new Pixel(
+                        buffer[bufferIndex + 3],
+                        buffer[bufferIndex], 
+                        buffer[bufferIndex + 1], 
+                        buffer[bufferIndex + 2]
+                    );
+                    Pixel fore = new Pixel(
+                        image[Math.Min(index + 3, image.Length - 1)],
+                        image[Math.Min(index,     image.Length - 1)], 
+                        image[Math.Min(index + 1, image.Length - 1)], 
+                        image[Math.Min(index + 2, image.Length - 1)]
+                    );
 
-                    fore.Composite(back);
+                    back = back.Composite(fore);
 
-                    buffer[bufferIndex]     = fore.R;
-                    buffer[bufferIndex + 1] = fore.G;
-                    buffer[bufferIndex + 2] = fore.B;
-                    buffer[bufferIndex + 3] = fore.A;
-
-                    /*buffer[bufferIndex]     = image[Math.Min(index, image.Length - 1)];
-                      buffer[bufferIndex + 1] = image[Math.Min(index + 1, image.Length - 1)];
-                      buffer[bufferIndex + 2] = image[Math.Min(index + 2, image.Length - 1)];
-                      buffer[bufferIndex + 3] = image[Math.Min(index + 3, image.Length - 1)]; */
+                    buffer[bufferIndex]     = back.R;
+                    buffer[bufferIndex + 1] = back.G;
+                    buffer[bufferIndex + 2] = back.B;
+                    buffer[bufferIndex + 3] = back.A;
                 }
             }
         }
@@ -303,6 +310,26 @@ namespace FoundationR
             }
             return instance;
         }
+        public static void HandleFile(string outpath, string inpath, int bpp)
+        {
+            Bitmap bitmap = (Bitmap)Bitmap.FromFile(inpath);
+            REW result = REW.Extract(bitmap, (short)bpp);
+            FileStream fs = default;
+            try
+            {
+                fs = new FileStream(outpath, FileMode.CreateNew);
+            }
+            catch
+            {
+                var message = MessageBox.Show($"File\n\n{outpath}\n\nalready exists. Overwrite?", "File Exists", MessageBoxButtons.YesNoCancel);
+                if (message == DialogResult.No || message == DialogResult.Cancel)
+                {
+                    return;
+                }
+            }
+            result.Write(new BinaryWriter(fs));
+            fs.Dispose();
+        }
     }
     public partial class REW
     {
@@ -331,7 +358,7 @@ namespace FoundationR
         {
             return new REW(width, height, bpp);
         }
-        private REW() { }
+        public REW() { }
         private REW(int width, int height, short bpp)
         {
             this.BitsPerPixel = bpp;
@@ -466,21 +493,25 @@ namespace FoundationR
         }
         public void Write(BinaryWriter w)
         {
-            w.Write(new Point16(Width, Height));
+            Point16 point = new Point16(Width, Height);
+            w.Write(point);
             w.Write(data.Length);
             w.Write(BitsPerPixel);
-            w.Write(data, 0, data.Length);
+            byte[] buffer = this.GetPixels();
+            w.Write(buffer, 0, buffer.Length);
+            point = default;
+            buffer = null;
         }
         public void ReadData(BinaryReader br)
         {
             Point16 size = br.ReadPoint16();
             int len = br.ReadInt32();
             BitsPerPixel = br.ReadInt16();
-            data = new byte[(len - HeaderOffset) * NumChannels];
+            data = new byte[len - HeaderOffset];
             data.AddHeader(size, len, BitsPerPixel);
             Width = size.X;
             Height = size.Y;
-            for (int i = HeaderOffset; i < data.Length; i += NumChannels)
+            for (int i = HeaderOffset; i < data.Length - NumChannels; i += NumChannels)
             {
                 Pixel pixel = br.ReadPixel();
                 pixel.hasAlpha = NumChannels == 4;
@@ -599,6 +630,9 @@ namespace FoundationR
             return new byte[] { x[0], x[1], y[0], y[1] };
         }
     }
+
+    //  TODO:
+    //  shrink the REW back to version 1.0 and then only use extensions on whatever is there
     public static class Ext
     {
         public static void AddHeader(this byte[] buffer, Point16 size, int dataLength, int bpp)
@@ -641,25 +675,27 @@ namespace FoundationR
         }
         public static Pixel ReadPixel(this BinaryReader r)
         {
-            Pixel i = new Pixel();
-            i.A = r.ReadByte();
-            i.R = r.ReadByte();
-            i.G = r.ReadByte();
-            i.B = r.ReadByte();
+            Pixel i = new Pixel
+            (
+                r.ReadByte(),
+                r.ReadByte(),
+                r.ReadByte(),
+                r.ReadByte()
+            );
             return i;
         }
         public static byte[] AppendPixel(this byte[] array, int index, Pixel i)
         {
             if (i.hasAlpha)
             {
-                array[index] = i.R;
-                array[index + 1] = i.G;
-                array[index + 2] = i.B;
-                array[index + 3] = i.A;
+                array[index]     = i.A;
+                array[index + 1] = i.R;
+                array[index + 2] = i.G;
+                array[index + 3] = i.B;
             }
             else
             {
-                array[index] = i.R;
+                array[index]     = i.R;
                 array[index + 1] = i.G;
                 array[index + 2] = i.B;
             }
@@ -713,6 +749,68 @@ namespace FoundationR
             pixel.G = (byte)((g * a) / 255);
             pixel.B = (byte)((b * a) / 255);
             return pixel;
+        }
+        public static int BytesPerPixel(this System.Drawing.Imaging.PixelFormat format)
+        {
+            int bytesPerPixel = 0;
+            switch (format)
+            {
+                case System.Drawing.Imaging.PixelFormat.Format16bppArgb1555:
+                case System.Drawing.Imaging.PixelFormat.Format16bppGrayScale:
+                case System.Drawing.Imaging.PixelFormat.Format16bppRgb555:
+                case System.Drawing.Imaging.PixelFormat.Format16bppRgb565:
+                    bytesPerPixel = 16 / 8;
+                    break;
+                case System.Drawing.Imaging.PixelFormat.Format1bppIndexed:
+                case System.Drawing.Imaging.PixelFormat.Format4bppIndexed:
+                case System.Drawing.Imaging.PixelFormat.Format8bppIndexed:
+                    bytesPerPixel = 1;
+                    break;
+                case System.Drawing.Imaging.PixelFormat.Format24bppRgb:
+                    bytesPerPixel = 24 / 8;
+                    break;
+                case System.Drawing.Imaging.PixelFormat.Format32bppArgb:
+                case System.Drawing.Imaging.PixelFormat.Format32bppPArgb:
+                case System.Drawing.Imaging.PixelFormat.Format32bppRgb:
+                    bytesPerPixel = 32 / 8;
+                    break;
+                case System.Drawing.Imaging.PixelFormat.Format48bppRgb:
+                    bytesPerPixel = 48 / 8;
+                    break;
+                case System.Drawing.Imaging.PixelFormat.Format64bppArgb:
+                case System.Drawing.Imaging.PixelFormat.Format64bppPArgb:
+                    bytesPerPixel = 64 / 8;
+                    break;
+            }
+            return bytesPerPixel;
+        }
+        public static PixelFormat GetFormat(int bpp)
+        {
+            switch (bpp)
+            { 
+                case 1:
+                    return PixelFormats.Indexed8;
+                case 2:
+                    return PixelFormats.Bgr555;
+                default:
+                case 3:
+                    return PixelFormats.Bgr24;
+                case 4:
+                    return PixelFormats.Bgr32;
+                case 6:
+                    return PixelFormats.Rgb48;
+                case 8:
+                    return PixelFormats.Rgba64;
+            }
+        }
+        public static REW ReadREW(this FileStream fs)
+        {
+            BinaryReader br = new BinaryReader(fs);
+            REW result = default;
+            (result = new REW()).ReadData(br);
+            br.Dispose();
+            fs.Dispose();
+            return result;
         }
     }
     public class Composite
@@ -778,7 +876,7 @@ namespace FoundationR
     {
         public static Color Blend(this Color color, Color backColor, double amount)
         {
-            byte a = color.A; // unknown
+            byte a = 255; // unknown
             byte r = (byte)(color.R * amount + backColor.R * (1 - amount));
             byte g = (byte)(color.G * amount + backColor.G * (1 - amount));
             byte b = (byte)(color.B * amount + backColor.B * (1 - amount));

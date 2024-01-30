@@ -125,6 +125,8 @@ namespace FoundationR
             this.RegisterHooks();
             window.form = new SurfaceForm(window);
             rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
+            LoadResources();
+            Initialize();
             new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => update(ref flag2), dispatcher).Start();
             IntPtr HDC = IntPtr.Zero;
             draw(ref flag, window);
@@ -153,12 +155,6 @@ namespace FoundationR
             }
             void update(ref bool taskDone)
             {
-                if (!init)
-                {
-                    init = true;
-                    LoadResources();
-                    Initialize();
-                }
                 if (taskDone)
                 { 
                     taskDone = false;

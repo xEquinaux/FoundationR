@@ -5,8 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FoundationR"
         mc:Ignorable="d"
-        Title="Surface" Height="400" Width="600" SizeToContent="WidthAndHeight">
+        Title="Surface" Height="400" Width="393" SizeToContent="WidthAndHeight">
     <Grid>
-        <Rectangle HorizontalAlignment="Left" Height="384" Stroke="#00000000" VerticalAlignment="Top" Width="600"/>
+        <Rectangle HorizontalAlignment="Left" Height="384" Stroke="#00000000" VerticalAlignment="Top" Width="393"/>
+        <ListBox x:Name="listbox_file" Margin="10,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Height="364" Width="217" SelectionChanged="listbox_file_SelectionChanged"/>
+        <Button x:Name="button_load" Content="Load" HorizontalAlignment="Left" Margin="232,329,0,0" VerticalAlignment="Top" Width="151" Click="button_load_Click"/>
+        <Button x:Name="button_convert" Content="Convert" HorizontalAlignment="Left" Margin="232,354,0,0" VerticalAlignment="Top" Width="151" Click="button_convert_Click"/>
+        <Button x:Name="button_clear" Content="Clear" HorizontalAlignment="Left" Margin="232,304,0,0" VerticalAlignment="Top" Width="151" Click="button_clear_Click"/>
+        <Button x:Name="button_remove" Content="Remove" HorizontalAlignment="Left" Margin="232,279,0,0" VerticalAlignment="Top" Width="151" Click="button_remove_Click"/>
+        <Image x:Name="image" HorizontalAlignment="Left" Height="260" Margin="232,10,0,0" VerticalAlignment="Top" Width="151"/>
     </Grid>
 </Window>

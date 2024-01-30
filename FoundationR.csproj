@@ -10,7 +10,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="REW_Converter\**" />
+    <EmbeddedResource Remove="REW_Converter\**" />
+    <None Remove="REW_Converter\**" />
+    <Page Remove="REW_Converter\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="FoundationR_1.0.zip" />
+    <None Remove="REW_Converter.zip" />
   </ItemGroup>
 
 </Project>
