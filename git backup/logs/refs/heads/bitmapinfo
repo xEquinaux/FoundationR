@@ -1,0 +1,6 @@
+0000000000000000000000000000000000000000 72c7eeca176d67b9480706d4985bc91b84d235df Nolan Flammini <nolantheturtle@gmail.com> 1706490783 -0800	branch: Created from 1.1+
+72c7eeca176d67b9480706d4985bc91b84d235df 55eb9d686b0d725293645240b5d6216b5e5e8dc1 Nolan Flammini <nolantheturtle@gmail.com> 1706552504 -0800	commit: [unstable] returning to piping drawing through a dummy REW
+55eb9d686b0d725293645240b5d6216b5e5e8dc1 2906938d6cf7892f3162354874e21f6e05596ea7 Nolan Flammini <nolantheturtle@gmail.com> 1706557219 -0800	commit: [unstable] does not composite quite right
+2906938d6cf7892f3162354874e21f6e05596ea7 838ac05de71570093497f9ba72b3dfa5180517eb Nolan Flammini <nolantheturtle@gmail.com> 1706562339 -0800	commit: [unstable] doesn't work but this is a rendition of skipping a REW backbuffer image stand-in
+838ac05de71570093497f9ba72b3dfa5180517eb 9f2b4ccb9dccefb2bd7feb4192c39c7103fd0f85 Nolan Flammini <nolantheturtle@gmail.com> 1706572971 -0800	commit: [success] modified buffer array as backbuffer working
+9f2b4ccb9dccefb2bd7feb4192c39c7103fd0f85 755528f28cdd5d2f446ebc6da2e1d1524e03a36f Nolan Flammini <nolantheturtle@gmail.com> 1706577150 -0800	commit: [unknown] removing graphics and bufferedgraphics, working on composite of layers

@@ -1,0 +1,22 @@
+0000000000000000000000000000000000000000 bf95297f0437e85b76af87b372c2123d465f0d14 Nolan Flammini <nolantheturtle@gmail.com> 1706057526 -0800	commit (initial): Add .gitattributes and .gitignore.
+bf95297f0437e85b76af87b372c2123d465f0d14 27a061ba3708a8067097c9e4b37c9e424b24e0ce Nolan Flammini <nolantheturtle@gmail.com> 1706057527 -0800	commit: Add project files.
+27a061ba3708a8067097c9e4b37c9e424b24e0ce 704ac9512f9635b75a7302dd7133d721e83b352b Nolan Flammini <nolantheturtle@gmail.com> 1706060578 -0800	commit: [added] added automatic start with built in wpf surface
+704ac9512f9635b75a7302dd7133d721e83b352b 9490362e975206a4e332a216f9fedc8795694c68 Nolan Flammini <nolantheturtle@gmail.com> 1706060714 -0800	commit: [pre] build moved to WinExe instead of Library
+9490362e975206a4e332a216f9fedc8795694c68 eb7c772df2cc451203689fe855c963249d7cc07a Nolan Flammini <nolantheturtle@gmail.com> 1706060748 -0800	commit: [fix] WPF init moved to proper constructor
+eb7c772df2cc451203689fe855c963249d7cc07a 8579885d636510254535b871e0288d46fa84cba0 Nolan Flammini <nolantheturtle@gmail.com> 1706064019 -0800	commit: [pre] small changes
+8579885d636510254535b871e0288d46fa84cba0 a9b2b1788d09af2db4f0fff2d73fc59d6c47ec0e Nolan Flammini <nolantheturtle@gmail.com> 1706066623 -0800	commit: [1.0] fixed timers
+a9b2b1788d09af2db4f0fff2d73fc59d6c47ec0e aa190080788f2b83b2d4b05b4dc5b4448628a252 Nolan Flammini <nolantheturtle@gmail.com> 1706072093 -0800	commit: [fix] getting surface drawing to work and be double buffered
+aa190080788f2b83b2d4b05b4dc5b4448628a252 ee7639835f3a6899a3a5ad3b2029f28269cecf22 Nolan Flammini <nolantheturtle@gmail.com> 1706122089 -0800	commit: [removed] Window inheritance
+ee7639835f3a6899a3a5ad3b2029f28269cecf22 7b870ef111b6a845aec98f0063a1dbe51fe889d4 Nolan Flammini <nolantheturtle@gmail.com> 1706154492 -0800	commit: [progress] ImageLoader, transitioning out of whoAmI index value
+7b870ef111b6a845aec98f0063a1dbe51fe889d4 333a1ed497b7759cbc02471cd5bd03111e10fc4d Nolan Flammini <nolantheturtle@gmail.com> 1706157073 -0800	commit: [unknown] image loader methods
+333a1ed497b7759cbc02471cd5bd03111e10fc4d 809072c072829164abdda2bb434c207b69559fea Nolan Flammini <nolantheturtle@gmail.com> 1706212785 -0800	commit: [unknown] possibly stable but not compiled or tested yet
+809072c072829164abdda2bb434c207b69559fea 1599f302bb1e98661d4c23ec689dac1c4a8540c4 Nolan Flammini <nolantheturtle@gmail.com> 1706218642 -0800	commit: [unstable][dirty] weak implementation of RewBatch
+1599f302bb1e98661d4c23ec689dac1c4a8540c4 95ae647c962cc1ba0ddbd4de4e0496b3e227c8e6 Nolan Flammini <nolantheturtle@gmail.com> 1706232616 -0800	commit: [progress] REW converting to bitmap, colors swapped back to argb, compositing
+95ae647c962cc1ba0ddbd4de4e0496b3e227c8e6 99232447953fe2ae3f6b98a24ef494b8bd54c0b3 Nolan Flammini <nolantheturtle@gmail.com> 1706259824 -0800	commit: [unknown][pre] building headers
+99232447953fe2ae3f6b98a24ef494b8bd54c0b3 9b0d73069e6d519af689a3595e7b725162bca839 Nolan Flammini <nolantheturtle@gmail.com> 1706269249 -0800	commit: [stable] drawing backbuffer with correct color, new BitsPerPixel calc
+9b0d73069e6d519af689a3595e7b725162bca839 cb1b351a539cf537baf9c08f8e5e7b7e7a53cdca Nolan Flammini <nolantheturtle@gmail.com> 1706275838 -0800	commit: [test] drawing image, moved out of invoke to override proper, header bug
+cb1b351a539cf537baf9c08f8e5e7b7e7a53cdca d040730d2a90e5b50b6d3cd8c8fc5daeea76e93a Nolan Flammini <nolantheturtle@gmail.com> 1706306912 -0800	commit: [unstable] error manually creating the DIB header for 32 bpp
+d040730d2a90e5b50b6d3cd8c8fc5daeea76e93a 5e29c7f8355e2a07330c37dcd34279dfef6db058 Nolan Flammini <nolantheturtle@gmail.com> 1706315933 -0800	commit: [unstable] working on getting 32bppArgb through bitmap headers
+5e29c7f8355e2a07330c37dcd34279dfef6db058 61faecd6f05e6723dea9d117ddcaa9cd5fb94515 Nolan Flammini <nolantheturtle@gmail.com> 1706320901 -0800	commit: [stable] drawing alpha channels
+61faecd6f05e6723dea9d117ddcaa9cd5fb94515 f77fb94880caf90dab35869d6cd40f327926b16f Nolan Flammini <nolantheturtle@gmail.com> 1706320954 -0800	commit: * updated build # (based on previous commit)
+f77fb94880caf90dab35869d6cd40f327926b16f 6e69ffeac95267bf5ade32dad5a2f1b31f34aae3 Nolan Flammini <nolantheturtle@gmail.com> 1706336783 -0800	commit: * Back buffer update

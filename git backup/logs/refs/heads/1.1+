@@ -1,0 +1,4 @@
+0000000000000000000000000000000000000000 6e69ffeac95267bf5ade32dad5a2f1b31f34aae3 Nolan Flammini <nolantheturtle@gmail.com> 1706381518 -0800	branch: Created from master
+6e69ffeac95267bf5ade32dad5a2f1b31f34aae3 ba1163e97404b0b7acdb928c024ec42ef8c7f7fe Nolan Flammini <nolantheturtle@gmail.com> 1706388984 -0800	commit: [1.1+] working on handling for cotf lighting and REW textures
+ba1163e97404b0b7acdb928c024ec42ef8c7f7fe 72c7eeca176d67b9480706d4985bc91b84d235df Nolan Flammini <nolantheturtle@gmail.com> 1706487908 -0800	commit: [added] untested support for v2 header
+72c7eeca176d67b9480706d4985bc91b84d235df e1dfee9d09228c816e608961df159e64006e7518 Nolan Flammini <nolantheturtle@gmail.com> 1706491851 -0800	commit: [unstable] manual writing is not really working
