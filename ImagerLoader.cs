@@ -210,19 +210,14 @@ namespace FoundationR
                     if (bufferIndex >= buffer.Length)
                         return;
                     Pixel back = new Pixel(buffer[bufferIndex], buffer[bufferIndex + 1], buffer[bufferIndex + 2], buffer[bufferIndex + 3]);
-                    Pixel fore = new Pixel(image[Math.Min(index, image.Length - 1)], image[Math.Min(index + 1, image.Length - 1)], image[Math.Min(index + 2, image.Length - 1)], image[Math.Min(index + 3, image.Length - 1)]);
+                    Pixel fore = new Pixel(image[Math.Min(index + 3, image.Length - 1)], image[Math.Min(index, image.Length - 1)], image[Math.Min(index + 1, image.Length - 1)], image[Math.Min(index + 2, image.Length - 1)]);
 
-                    fore.Composite(back);
+                    back = back.Composite(fore);
 
-                    buffer[bufferIndex]     = fore.R;
-                    buffer[bufferIndex + 1] = fore.G;
-                    buffer[bufferIndex + 2] = fore.B;
-                    buffer[bufferIndex + 3] = fore.A;
-
-                    /*buffer[bufferIndex]     = image[Math.Min(index, image.Length - 1)];
-                      buffer[bufferIndex + 1] = image[Math.Min(index + 1, image.Length - 1)];
-                      buffer[bufferIndex + 2] = image[Math.Min(index + 2, image.Length - 1)];
-                      buffer[bufferIndex + 3] = image[Math.Min(index + 3, image.Length - 1)]; */
+                    buffer[bufferIndex]     = back.B;
+                    buffer[bufferIndex + 1] = back.G;
+                    buffer[bufferIndex + 2] = back.R;
+                    buffer[bufferIndex + 3] = back.A;
                 }
             }
         }
@@ -778,7 +773,7 @@ namespace FoundationR
     {
         public static Color Blend(this Color color, Color backColor, double amount)
         {
-            byte a = color.A; // unknown
+            byte a = 255; // unknown
             byte r = (byte)(color.R * amount + backColor.R * (1 - amount));
             byte g = (byte)(color.G * amount + backColor.G * (1 - amount));
             byte b = (byte)(color.B * amount + backColor.B * (1 - amount));
