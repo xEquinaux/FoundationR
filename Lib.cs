@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Linq;
@@ -13,6 +14,7 @@ using System.Windows.Automation;
 using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using Image = System.Windows.Controls.Image;
 
@@ -32,7 +34,7 @@ namespace FoundationR
         static extern IntPtr GetWindowDC(IntPtr hWnd);
         
         
-        bool flag = true, flag2 = true, init;
+        bool flag = true, flag2 = true, init, init2;
         public static int offX, offY;
         public static Rectangle bounds;
         public static Camera viewport;
@@ -60,10 +62,10 @@ namespace FoundationR
         public virtual void RegisterHooks()
         {
         }
-        internal void Run(Dispatcher dispatcher, Image surface)
+        internal void Run(Dispatcher dispatcher, Image surface, int bitsPerPixel = 32)
         {
             this.RegisterHooks();
-            rewBatch = new RewBatch((int)surface.Width, (int)surface.Height);
+            rewBatch = new RewBatch((int)surface.Width, (int)surface.Height, bitsPerPixel);
             new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => update(ref flag2), dispatcher).Start();
             draw(ref flag, surface);
             void draw(ref bool taskDone, Image surface)
@@ -79,7 +81,7 @@ namespace FoundationR
                         {
                             using (BufferedGraphics b = context.Allocate(g, new Rectangle(0, 0, bounds.Width, bounds.Height)))
                             {
-                                rewBatch.Begin();
+                                //rewBatch.Begin();
                                 SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
                                 b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
                                 ResizeWindow(surface);
@@ -87,7 +89,7 @@ namespace FoundationR
                                 PreDraw(rewBatch);
                                 Draw(rewBatch);
                                 Camera(new CameraArgs(b.Graphics, viewport, bounds, offX, offY));
-                                rewBatch.Render(b.Graphics);
+                                //rewBatch.Render(b.Graphics);
                                 b.Render();
                                 rewBatch.End();
                             }
@@ -122,35 +124,29 @@ namespace FoundationR
         {
             this.RegisterHooks();
             window.form = new SurfaceForm(window);
-            rewBatch = new RewBatch(window.Width, window.Height);
+            rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
             new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => update(ref flag2), dispatcher).Start();
+            IntPtr HDC = IntPtr.Zero;
             draw(ref flag, window);
             void draw(ref bool taskDone, Surface surface)
             {
+                int width = (int)surface.Width;
+                int height = (int)surface.Height;
                 if (taskDone)
                 {
                     taskDone = false;
-                    int width = (int)surface.Width;
-                    int height = (int)surface.Height;
-                    IntPtr HDC = GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403);
-                    using (Graphics g = Graphics.FromHdc(HDC))
                     {
-                        using (BufferedGraphics b = context.Allocate(g, new Rectangle(0, 0, width, height)))
+                        rewBatch.Begin(GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
+                        if (ResizeWindow(window.form, rewBatch))
                         {
-                            rewBatch.Begin();
-                            SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
-                            b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
-                            ResizeWindow(window.form);
-                            TitleScreen(rewBatch);
-                            PreDraw(rewBatch);
-                            Draw(rewBatch);
-                            Camera(new CameraArgs(b.Graphics, viewport, bounds, offX, offY));
-                            rewBatch.Render(b.Graphics);
-                            b.Render();
-                            rewBatch.End();
+                            rewBatch = new RewBatch(width, height, window.BitsPerPixel);
                         }
+                        TitleScreen(rewBatch);
+                        PreDraw(rewBatch);
+                        Draw(rewBatch);
+                        Camera(viewport, bounds, offX, offY);
+                        rewBatch.End();
                     }
-                    DeleteObject(HDC);
                     taskDone = true;
                 }
                 dispatcher.BeginInvoke(() => draw(ref flag, window), DispatcherPriority.Background, null);
@@ -197,8 +193,9 @@ namespace FoundationR
         public virtual void ResizeWindow(Image surface)
         {
         }
-        public virtual void ResizeWindow(Form form)
+        public virtual bool ResizeWindow(Form form, RewBatch graphcis)
         {
+            return false;
         }
         public virtual void LoadResources()
         {
@@ -217,6 +214,17 @@ namespace FoundationR
         }
         public virtual void Update()
         {
+        }
+        public virtual void Camera(Camera CAMERA, Rectangle screen, int offX, int offY)
+        {
+            if (CAMERA == null)
+                return;
+            if (CAMERA.follow && CAMERA.isMoving)
+            {
+                screen.X = (int)-CAMERA.position.X + screen.Width / 2 - offX;
+                screen.Y = (int)-CAMERA.position.Y + screen.Height / 2 - offY;
+            }
+            CAMERA.oldPosition = CAMERA.position;
         }
         public virtual void Camera(CameraArgs e)
         {
@@ -257,18 +265,20 @@ namespace FoundationR
     }
     public struct Surface
     {
-        public Surface(int x, int y, int width, int height, string windowTitle)
+        public Surface(int x, int y, int width, int height, string windowTitle, int bitsPerPixel)
         {
             this.X = x;
             this.Y = y;
             this.Width = width;
             this.Height = height;
             this.Title = windowTitle;
+            this.BitsPerPixel = bitsPerPixel;
             form = default;
         }
         public string? Title;
         public int Width, Height;
         public int X, Y;
+        public int BitsPerPixel;
         public Form form;
     }
     public class Camera
