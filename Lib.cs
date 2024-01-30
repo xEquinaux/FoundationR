@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Linq;
@@ -13,6 +14,7 @@ using System.Windows.Automation;
 using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 using Image = System.Windows.Controls.Image;
 
@@ -32,7 +34,7 @@ namespace FoundationR
         static extern IntPtr GetWindowDC(IntPtr hWnd);
         
         
-        bool flag = true, flag2 = true, init;
+        bool flag = true, flag2 = true, init, init2;
         public static int offX, offY;
         public static Rectangle bounds;
         public static Camera viewport;
@@ -79,7 +81,7 @@ namespace FoundationR
                         {
                             using (BufferedGraphics b = context.Allocate(g, new Rectangle(0, 0, bounds.Width, bounds.Height)))
                             {
-                                rewBatch.Begin();
+                                //rewBatch.Begin();
                                 SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
                                 b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
                                 ResizeWindow(surface);
@@ -87,7 +89,7 @@ namespace FoundationR
                                 PreDraw(rewBatch);
                                 Draw(rewBatch);
                                 Camera(new CameraArgs(b.Graphics, viewport, bounds, offX, offY));
-                                rewBatch.Render(b.Graphics);
+                                //rewBatch.Render(b.Graphics);
                                 b.Render();
                                 rewBatch.End();
                             }
@@ -124,36 +126,39 @@ namespace FoundationR
             window.form = new SurfaceForm(window);
             rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
             new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => update(ref flag2), dispatcher).Start();
+            IntPtr HDC = IntPtr.Zero;
+            Graphics g = default;
+            BufferedGraphics b = default;
             draw(ref flag, window);
             void draw(ref bool taskDone, Surface surface)
             {
+                int width = (int)surface.Width;
+                int height = (int)surface.Height;
+                if (!init2)
+                {
+                    init2 = true;
+                    HDC = GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403);
+                    g = Graphics.FromHdc(HDC);
+                    b = context.Allocate(g, new Rectangle(00, 0, width, height));
+                }
                 if (taskDone)
                 {
                     taskDone = false;
-                    int width = (int)surface.Width;
-                    int height = (int)surface.Height;
-                    IntPtr HDC = GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403);
-                    using (Graphics g = Graphics.FromHdc(HDC))
                     {
-                        using (BufferedGraphics b = context.Allocate(g, new Rectangle(0, 0, width, height)))
+                        rewBatch.Begin(GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
+                        SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
+                        b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
+                        if (ResizeWindow(window.form, rewBatch))
                         {
-                            rewBatch.Begin();
-                            SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
-                            b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
-                            if (ResizeWindow(window.form, rewBatch))
-                            {
-                                rewBatch = new RewBatch(width, height, window.BitsPerPixel);
-                            }
-                            TitleScreen(rewBatch);
-                            PreDraw(rewBatch);
-                            Draw(rewBatch);
-                            Camera(new CameraArgs(b.Graphics, viewport, bounds, offX, offY));
-                            rewBatch.Render(b.Graphics);
-                            b.Render();
-                            rewBatch.End();
+                            rewBatch = new RewBatch(width, height, window.BitsPerPixel);
                         }
+                        TitleScreen(rewBatch);
+                        PreDraw(rewBatch);
+                        Draw(rewBatch);
+                        Camera(new CameraArgs(b.Graphics, viewport, bounds, offX, offY));
+                        b.Render();
+                        rewBatch.End();
                     }
-                    DeleteObject(HDC);
                     taskDone = true;
                 }
                 dispatcher.BeginInvoke(() => draw(ref flag, window), DispatcherPriority.Background, null);

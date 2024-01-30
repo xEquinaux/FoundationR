@@ -13,6 +13,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Runtime.Remoting;
+using System.Security.Policy;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -116,10 +117,18 @@ namespace FoundationR
         static extern IntPtr CreateDIBSection(IntPtr hdc, [In] ref BitmapInfo pbmi, uint pila, out IntPtr ppbBits, IntPtr hSection, uint dwOffset);
         [DllImport("gdi32.dll")]
         static extern IntPtr CreateBitmap(int nWidth, int nHeight, uint cPlanes, uint cBitsPerPel, IntPtr lpvBits);
+        [DllImport("gdi32.dll")]
+        static extern IntPtr CreateBitmap(int nWidth, int nHeight, uint cPlanes, uint cBitsPerPel, byte[] lpBits);
         [DllImport("user32.dll")]
         static extern IntPtr GetDC(IntPtr hWnd);
         [DllImport("user32.dll")]
         static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+        [DllImport("gdi32.dll")]
+        static extern int SetDIBitsToDevice(IntPtr hdc, int xDest, int yDest, int w, int h, int xSrc, int ySrc, int startScan, int scanLines, IntPtr bits, IntPtr bmih, uint colorUse);
+        [DllImport("gdi32.dll")]
+        static extern int SetDIBitsToDevice(IntPtr hdc, int xDest, int yDest, int w, int h, int xSrc, int ySrc, int startScan, int scanLines, byte[] bits, BitmapInfoHeader bmih, uint colorUse);
+        [DllImport("gdi32.dll")]
+        static extern IntPtr SelectObject(IntPtr hdc, IntPtr hbdiobj);
 
         private int stride => width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
         private int width, height;
@@ -128,8 +137,7 @@ namespace FoundationR
         private byte[] backBuffer;
         private Int32Rect backBufferRect => new Int32Rect(0, 0, width, height);
         private static REW Surface;
-        private static Bitmap BackBuffer;
-        BitmapData bmpData;
+        IntPtr hdc;
         public RewBatch(int width, int height, int bitsPerPixel = 32)
         {
             Initialize(width, height);
@@ -139,7 +147,7 @@ namespace FoundationR
         {
             this.width = width;
             this.height = height;
-            BackBuffer = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            backBuffer = new byte[width * height * (BitsPerPixel / 8)];
         }
         public bool Resize(int width, int height)
         {
@@ -149,28 +157,69 @@ namespace FoundationR
                 this.oldWidth = width;
                 this.height = height;
                 this.oldHeight = height;
-                BackBuffer = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+                backBuffer = new byte[width * height * (BitsPerPixel / 8)];
                 return true;
             }
             return false;
         }
-        public void Begin()
+        public void Begin(IntPtr hdc)
         {
+            backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+            this.hdc = hdc;
         }
         public void Draw(REW image, int x, int y)
         {
-            Rectangle rect = new Rectangle(0, 0, this.width, this.height);
-            bmpData = BackBuffer.LockBits(rect, ImageLockMode.WriteOnly, BackBuffer.PixelFormat);
-            Marshal.Copy(image.GetPixels(), y * image.Width + x, bmpData.Scan0, Math.Min(this.width * this.height * (BitsPerPixel / 8), image.RealLength));
-            BackBuffer.UnlockBits(bmpData);
-        }
-        public void Render(Graphics g)
-        {
-            g.DrawImage(BackBuffer, 0, 0);
+            CompositeImage(backBuffer, this.width, this.height, image.GetPixels(), image.Width, image.Height, x, y);
         }
         public void End()
         {
+            BitmapInfoHeader bmih = new BitmapInfoHeader()
+            {
+                Size = 40,
+                Width = this.width,
+                Height = this.height,
+                Planes = 1,
+                BitCount = 32,
+                Compression = (uint)BitmapCompressionMode.BI_RGB,
+                SizeImage = (uint)(this.width * this.height * (BitsPerPixel / 8)),
+                XPelsPerMeter = 96,
+                YPelsPerMeter = 96
+            };
+            // create bitmap out of pixel array
+            //IntPtr hbitmap = CreateBitmap(this.width, this.height, 1, (uint)BitsPerPixel, backBuffer);
+            //IntPtr oldhbitmap = SelectObject(hdc, hbitmap);
+
+            // display the bitmap onto the hdc
+            GCHandle h = GCHandle.Alloc(bmih, GCHandleType.Pinned);
+            GCHandle h2 = GCHandle.Alloc(backBuffer, GCHandleType.Pinned);
+            SetDIBitsToDevice(hdc, 0, 0, this.width, this.height, 0, 0, 0, this.height, h2.AddrOfPinnedObject(), h.AddrOfPinnedObject(), 0);
+            h.Free();
+            h2.Free();
+
+            // free resources
+            //SelectObject(hdc, oldhbitmap);
+            //Foundation.DeleteObject(hbitmap);
+            //Foundation.DeleteObject(oldhbitmap);
+            ReleaseDC(IntPtr.Zero, hdc);
+            backBuffer = null;
         }
+        void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y)
+        {
+            for (int i = 0; i < imageHeight; i++)
+            {
+                for (int j = 0; j < imageWidth; j++)
+                {
+                    int index = (i * imageWidth + j) * 4;
+                    int bufferIndex = ((y + i) * bufferWidth + (x + j)) * 4;
+
+                    buffer[bufferIndex] = image[index];
+                    buffer[bufferIndex + 1] = image[index + 1];
+                    buffer[bufferIndex + 2] = image[index + 2];
+                    buffer[bufferIndex + 3] = image[index + 3];
+                }
+            }
+        }
+
         Bitmap CreateBitmapFromByteArray(byte[] pixels, int width, int height)
         {
             Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
