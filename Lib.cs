@@ -27,7 +27,7 @@ namespace FoundationR
         [DllImport("user32.dll", EntryPoint = "FindWindow", SetLastError = true)]
         static extern IntPtr FindWindowByCaption(IntPtr ZeroOnly, string lpWindowName);
         [DllImport("gdi32.dll")]
-        public static extern bool DeleteObject(IntPtr hObject);
+        internal static extern bool DeleteObject(IntPtr hObject);
         [DllImport("user32.dll")]  
         static extern IntPtr GetDCEx(IntPtr hWnd, IntPtr hrgnClip, uint flags);
         [DllImport("user32.dll")]
@@ -38,8 +38,8 @@ namespace FoundationR
         public static int offX, offY;
         public static Rectangle bounds;
         public static Camera viewport;
-        static BufferedGraphicsContext context = BufferedGraphicsManager.Current;
-        static RewBatch rewBatch;
+        protected static BufferedGraphicsContext context = BufferedGraphicsManager.Current;
+        protected static RewBatch rewBatch;
 
         internal class SurfaceForm : Form
         {
