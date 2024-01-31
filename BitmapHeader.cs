@@ -1,20 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FoundationR
+﻿namespace FoundationR
 {
     //  DWORD           4 bytes uint
     //  LONG            4 bytes int
     //  WORD            2 bytes short
     //  CIEXYZTRIPLE    ? bytes object
     using System.Runtime.InteropServices;
-    using System.Security.Policy;
-    using System.Windows.Markup;
-
+    
     [StructLayout(LayoutKind.Sequential)]
     public struct BitmapInfo
     {

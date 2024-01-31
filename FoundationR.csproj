@@ -17,7 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="FoundationR.zip" />
     <None Remove="FoundationR_1.0.zip" />
+    <None Remove="FoundationR_1.2-last.zip" />
     <None Remove="REW_Converter.zip" />
   </ItemGroup>
 

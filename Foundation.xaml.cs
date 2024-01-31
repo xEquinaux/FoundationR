@@ -1,23 +1,14 @@
-﻿using System.Drawing;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Text;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Media.Media3D;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Image = System.Windows.Controls.Image;
 
 namespace FoundationR
 {
     public enum SurfaceType
     {
+        [Obsolete("Legacy surface type")]
         WPFImage,
         WindowHandle
     }
@@ -30,16 +21,11 @@ namespace FoundationR
             switch (type)
             {
                 case SurfaceType.WPFImage:
-                    Run(Dispatcher, wpfImage);
-                    break;
+                    throw new SurfaceTypeException();
                 case SurfaceType.WindowHandle:
                     Run(Dispatcher, windowHandle);
                     break;
             }
-        }
-        public void Run(Image wpfImage)
-        {
-            Run(Dispatcher, wpfImage);
         }
         public void Run(Surface windowData)
         {
@@ -47,7 +33,7 @@ namespace FoundationR
         }
         class SurfaceTypeException : Exception
         {
-            public override string Message => "Surface enum not defined";
+            public override string Message => "Surface enum not supported";
         }
 
         int bpp = 32;
