@@ -1,53 +1,38 @@
-﻿using System.Drawing;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Text;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Media.Media3D;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Image = System.Windows.Controls.Image;
 
 namespace FoundationR
 {
     public enum SurfaceType
     {
+        [Obsolete("Legacy surface type")]
         WPFImage,
-        WindowHandle
+        [Obsolete("Legacy surface type")]
+        WindowHandle,
+        WindowHandle_Loop
     }
-    public partial class Foundation : Window
+    public partial class Foundation
     {
         public Image wpfImage;
-        public Surface windowHandle;
-        public void Run(SurfaceType type)
+        public void Run(SurfaceType type, Surface surface)
         {
             switch (type)
             {
                 case SurfaceType.WPFImage:
-                    Run(Dispatcher, wpfImage);
-                    break;
+                    throw new SurfaceTypeException();
                 case SurfaceType.WindowHandle:
-                    Run(Dispatcher, windowHandle);
+                    throw new SurfaceTypeException();
+                case SurfaceType.WindowHandle_Loop:
+                    Run(surface);
                     break;
             }
         }
-        public void Run(Image wpfImage)
-        {
-            Run(Dispatcher, wpfImage);
-        }
-        public void Run(Surface windowData)
-        {
-            Run(Dispatcher, windowData);
-        }
         class SurfaceTypeException : Exception
         {
-            public override string Message => "Surface enum not defined";
+            public override string Message => "Surface enum not supported";
         }
 
         int bpp = 32;
@@ -85,7 +70,7 @@ namespace FoundationR
         {
             if (listbox_file.SelectedIndex != -1)
             {
-                
+
                 Bitmap preview = (Bitmap)Bitmap.FromFile(list[listbox_file.SelectedIndex].FullPath);
                 int bpp = preview.PixelFormat.BytesPerPixel();
                 int stride = ((preview.Width * bpp) + 3) & ~3;

@@ -1,22 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing.Drawing2D;
-using System.Drawing.Text;
-using System.Linq;
+﻿using System.Diagnostics;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Security.Policy;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Automation;
-using System.Windows.Forms;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Media.Media3D;
 using System.Windows.Threading;
-using Image = System.Windows.Controls.Image;
 
 namespace FoundationR
 {
@@ -27,19 +12,22 @@ namespace FoundationR
         [DllImport("user32.dll", EntryPoint = "FindWindow", SetLastError = true)]
         static extern IntPtr FindWindowByCaption(IntPtr ZeroOnly, string lpWindowName);
         [DllImport("gdi32.dll")]
-        public static extern bool DeleteObject(IntPtr hObject);
-        [DllImport("user32.dll")]  
+        internal static extern bool DeleteObject(IntPtr hObject);
+        [DllImport("user32.dll")]
         static extern IntPtr GetDCEx(IntPtr hWnd, IntPtr hrgnClip, uint flags);
         [DllImport("user32.dll")]
         static extern IntPtr GetWindowDC(IntPtr hWnd);
-        
-        
+
+
         bool flag = true, flag2 = true, init, init2;
         public static int offX, offY;
         public static Rectangle bounds;
         public static Camera viewport;
-        static BufferedGraphicsContext context = BufferedGraphicsManager.Current;
-        static RewBatch rewBatch;
+        protected static RewBatch _rewBatch;
+        Stopwatch watch1 = new Stopwatch();
+        public static Stopwatch GameTime = new Stopwatch();
+        public static TimeSpan DrawTime;
+        public static TimeSpan UpdateTime;
 
         internal class SurfaceForm : Form
         {
@@ -47,7 +35,7 @@ namespace FoundationR
             {
                 //form.TransparencyKey = System.Drawing.Color.CornflowerBlue;
                 BackColor = System.Drawing.Color.CornflowerBlue;
-                FormBorderStyle = FormBorderStyle.None;
+                FormBorderStyle = FormBorderStyle.FixedSingle;
                 Width = surface.Width;
                 Height = surface.Height;
                 Location = new Point(surface.X, surface.Y);
@@ -62,200 +50,129 @@ namespace FoundationR
         public virtual void RegisterHooks()
         {
         }
-        internal void Run(Dispatcher dispatcher, Image surface, int bitsPerPixel = 32)
-        {
-            this.RegisterHooks();
-            rewBatch = new RewBatch((int)surface.Width, (int)surface.Height, bitsPerPixel);
-            new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => update(ref flag2), dispatcher).Start();
-            draw(ref flag, surface);
-            void draw(ref bool taskDone, Image surface)
-            {
-                if (taskDone)
-                { 
-                    taskDone = false;
-                    int width = (int)surface.Width;
-                    int height = (int)surface.Height;
-                    using (Bitmap bmp = new Bitmap(width, height))
-                    {
-                        using (Graphics g = Graphics.FromImage(bmp))
-                        {
-                            using (BufferedGraphics b = context.Allocate(g, new Rectangle(0, 0, bounds.Width, bounds.Height)))
-                            {
-                                //rewBatch.Begin();
-                                SetQuality(b.Graphics, new System.Drawing.Rectangle(0, 0, width, height));
-                                b.Graphics.Clear(System.Drawing.Color.CornflowerBlue);
-                                ResizeWindow(surface);
-                                TitleScreen(rewBatch);
-                                PreDraw(rewBatch);
-                                Draw(rewBatch);
-                                Camera(new CameraArgs(b.Graphics, viewport, bounds, offX, offY));
-                                //rewBatch.Render(b.Graphics);
-                                b.Render();
-                                rewBatch.End();
-                            }
-                        }
-                        int stride = width * ((PixelFormats.Bgr24.BitsPerPixel + 7) / 8);
-                        var data = bmp.LockBits(new System.Drawing.Rectangle(0, 0, width, height), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-                        surface.Source = BitmapSource.Create(width, height, 96f, 96f, PixelFormats.Bgr24, null, data.Scan0, stride * height, stride);
-                        bmp.UnlockBits(data);
-                    }
-                    taskDone = true;
-                }
-                dispatcher.BeginInvoke(() => draw(ref flag, surface), DispatcherPriority.Background, null);
-            }
-            void update(ref bool taskDone)
-            {
-                if (!init)
-                {
-                    init = true;
-                    LoadResources();
-                    Initialize();
-                }
-                if (taskDone)
-                {
-                    taskDone = false;
-                    Update();
-                    taskDone = true;
-                }
-                dispatcher.BeginInvoke(() => update(ref flag2), DispatcherPriority.Background, null);
-            }
-        }
-        internal void Run(Dispatcher dispatcher, Surface window)
+        internal void Run(Surface window)
         {
             this.RegisterHooks();
             window.form = new SurfaceForm(window);
-            rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
-            LoadResources();
-            Initialize();
-            new DispatcherTimer(TimeSpan.FromMilliseconds(60 / 1000), DispatcherPriority.Background, (s, e) => update(ref flag2), dispatcher).Start();
+            _rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
+            LoadResourcesEvent?.Invoke();
+            InitializeEvent?.Invoke(new InitializeArgs());
             IntPtr HDC = IntPtr.Zero;
-            draw(ref flag, window);
+            Task t = new Task(() => draw(ref flag, window));
+            Task t2 = new Task(() => update(ref flag2));
+            t.Start();
+            t2.Start();
+            GameTime.Start();
             void draw(ref bool taskDone, Surface surface)
             {
                 int width = (int)surface.Width;
                 int height = (int)surface.Height;
-                if (taskDone)
+                while (true)
                 {
-                    taskDone = false;
+                    if (taskDone)
                     {
-                        rewBatch.Begin(GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
-                        if (ResizeWindow(window.form, rewBatch))
+                        taskDone = false;
+                        DrawTime = watch1.Elapsed;
+                        watch1.Restart();
                         {
-                            rewBatch = new RewBatch(width, height, window.BitsPerPixel);
+                            InternalBegin(window);
+                            if ((bool)ResizeEvent?.Invoke())
+                            {
+                                _rewBatch = new RewBatch(width, height, window.BitsPerPixel);
+                            }
+                            MainMenuEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
+                            PreDrawEvent?.Invoke(new PreDrawArgs() { rewBatch = _rewBatch });
+                            DrawEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
+                            CameraEvent?.Invoke(new CameraArgs() { rewBatch = _rewBatch, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
+                            InternalEnd();
                         }
-                        TitleScreen(rewBatch);
-                        PreDraw(rewBatch);
-                        Draw(rewBatch);
-                        Camera(viewport, bounds, offX, offY);
-                        rewBatch.End();
+                        taskDone = true;
                     }
-                    taskDone = true;
                 }
-                dispatcher.BeginInvoke(() => draw(ref flag, window), DispatcherPriority.Background, null);
             }
             void update(ref bool taskDone)
             {
-                if (taskDone)
-                { 
-                    taskDone = false;
-                    Update();
-                    taskDone = true;
+                while (true)
+                {
+                    if (taskDone)
+                    {
+                        taskDone = false;
+                        UpdateEvent?.Invoke(new UpdateArgs());
+                        taskDone = true;
+                    }
                 }
             }
             window.form.ShowDialog();
         }
-        #region events
-        public class CameraArgs
+        bool UpdateLimiter()
         {
-            public CameraArgs() { }
-            public CameraArgs(Graphics g, Camera a, Rectangle r, int offX, int offY)
+            double deltaTime = 0; // Initialize the time accumulator
+            double accumulator = 0; // Accumulated time
+            double targetFrameTime = 1.0 / 60.0; // Target frame time (1/60 seconds)
+            double oldTime = 0;
+
+            double currentTime = watch1.Elapsed.Milliseconds; // Get current time
+            deltaTime = currentTime - oldTime; // Calculate time since last frame
+            oldTime = currentTime; // Update old time
+
+            accumulator += deltaTime; // Accumulate time
+
+            // Update when the accumulated time exceeds the target frame time
+            while (accumulator >= targetFrameTime)
             {
-                graphics = g;
-                CAMERA = a;
-                screen = r;
-                this.offX = offX;
-                this.offY = offY;
+                watch1.Restart();
+                accumulator -= targetFrameTime; // Subtract the frame time
+                return true;
             }
-            public Graphics graphics;
+            return false;
+        }
+        private void InternalBegin(Surface window)
+        {
+            _rewBatch.Begin(GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
+        }
+        private void InternalEnd()
+        {
+            _rewBatch.End();
+        }
+        #region events
+        public delegate void Event<T>(T e);
+        public delegate void Event();
+        public delegate bool Resize();
+        public static event Resize ResizeEvent;
+        public static event Event<InitializeArgs> InitializeEvent;
+        public static event Event LoadResourcesEvent;
+        public static event Event<DrawingArgs> MainMenuEvent;
+        public static event Event<PreDrawArgs> PreDrawEvent;
+        public static event Event<DrawingArgs> DrawEvent;
+        public static event Event<UpdateArgs> UpdateEvent;
+        public static event Event<CameraArgs> CameraEvent;
+        public interface IArgs
+        {
+        }
+        public class ResizeArgs : IArgs
+        {
+            public Surface window;
+        }
+        public class DrawingArgs : IArgs
+        {
+            public RewBatch rewBatch;
+        }
+        public class PreDrawArgs : IArgs
+        {
+            public RewBatch rewBatch;
+        }
+        public class UpdateArgs : IArgs
+        {
+        }
+        public class CameraArgs : IArgs
+        {
+            public RewBatch rewBatch;
             public Camera CAMERA;
             public Rectangle screen;
             public int offX, offY;
         }
-        public class InitializeArgs : EventArgs
+        public class InitializeArgs : IArgs
         {
-        }
-        #endregion
-        #region methods
-        public virtual void ResizeWindow(Image surface)
-        {
-        }
-        public virtual bool ResizeWindow(Form form, RewBatch graphcis)
-        {
-            return false;
-        }
-        public virtual void LoadResources()
-        {
-        }
-        public virtual void Initialize()
-        {
-        }
-        public virtual void TitleScreen(RewBatch graphics)
-        {
-        }
-        public virtual void PreDraw(RewBatch graphics)
-        {
-        }
-        public virtual void Draw(RewBatch graphics)
-        {
-        }
-        public virtual void Update()
-        {
-        }
-        public virtual void Camera(Camera CAMERA, Rectangle screen, int offX, int offY)
-        {
-            if (CAMERA == null)
-                return;
-            if (CAMERA.follow && CAMERA.isMoving)
-            {
-                screen.X = (int)-CAMERA.position.X + screen.Width / 2 - offX;
-                screen.Y = (int)-CAMERA.position.Y + screen.Height / 2 - offY;
-            }
-            CAMERA.oldPosition = CAMERA.position;
-        }
-        public virtual void Camera(CameraArgs e)
-        {
-            if (e.CAMERA == null)
-                return;
-            if (e.CAMERA.follow && e.CAMERA.isMoving)
-            {
-                e.screen.X = (int)-e.CAMERA.position.X + e.screen.Width / 2 - e.offX;
-                e.screen.Y = (int)-e.CAMERA.position.Y + e.screen.Height / 2 - e.offY;
-            }
-            e.graphics.RenderingOrigin = new System.Drawing.Point((int)e.CAMERA.position.X, (int)e.CAMERA.position.Y);
-            e.graphics.TranslateTransform(
-                e.screen.X,
-                e.screen.Y,
-                MatrixOrder.Append);
-            e.CAMERA.oldPosition = e.CAMERA.position;
-        }
-        #endregion
-        #region quality settings
-        public CompositingQuality compositingQuality = CompositingQuality.AssumeLinear;
-        public CompositingMode compositingMode = CompositingMode.SourceOver;
-        public InterpolationMode interpolationMode = InterpolationMode.NearestNeighbor;
-        public TextRenderingHint textRenderHint = TextRenderingHint.ClearTypeGridFit;
-        public GraphicsUnit graphicsUnit = GraphicsUnit.Pixel;
-        public SmoothingMode smoothingMode = SmoothingMode.Default;
-        private void SetQuality(Graphics graphics, System.Drawing.Rectangle bounds)
-        {
-            graphics.CompositingQuality = compositingQuality;
-            graphics.CompositingMode = compositingMode;
-            graphics.InterpolationMode = interpolationMode;
-            graphics.TextRenderingHint = textRenderHint;
-            //graphics.RenderingOrigin = new Point(bounds.X, bounds.Y);
-            //graphics.Clip = new System.Drawing.Region(bounds);
-            graphics.PageUnit = graphicsUnit;
-            graphics.SmoothingMode = smoothingMode;
         }
         #endregion
     }
@@ -282,7 +199,7 @@ namespace FoundationR
         public Vector2 oldPosition;
         public Vector2 position;
         public Vector2 velocity;
-        public bool isMoving => velocity != Vector2.Zero || oldPosition != position;
+        public virtual bool isMoving => velocity != Vector2.Zero || oldPosition != position;
         public bool follow = false;
         public bool active = false;
     }
