@@ -28,6 +28,7 @@ namespace FoundationR
         public static Stopwatch GameTime = new Stopwatch();
         public static TimeSpan DrawTime;
         public static TimeSpan UpdateTime;
+        public static IntPtr HDC;
 
         internal class SurfaceForm : Form
         {
@@ -57,7 +58,7 @@ namespace FoundationR
             _rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs());
-            IntPtr HDC = IntPtr.Zero;
+            HDC = FindWindowByCaption(IntPtr.Zero, window.Title);
             Task t = new Task(() => draw(ref flag, window));
             Task t2 = new Task(() => update(ref flag2));
             t.Start();
@@ -74,6 +75,10 @@ namespace FoundationR
                         taskDone = false;
                         DrawTime = watch1.Elapsed;
                         watch1.Restart();
+                        window.form?.Invoke(() =>
+                        {
+                            InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
+                        });
                         {
                             InternalBegin(window);
                             if ((bool)ResizeEvent?.Invoke())
@@ -126,9 +131,35 @@ namespace FoundationR
             }
             return false;
         }
+
+        public static class WindowUtils
+        {
+            [DllImport("dwmapi.dll")]
+            static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
+
+            public struct RECT
+            {
+                public int Left;
+                public int Top;
+                public int Right;
+                public int Bottom;
+            }
+
+            public static RECT GetWindowRectangleWithoutShadows(IntPtr handle)
+            {
+                RECT rect;
+                DwmGetWindowAttribute(handle, 9 /* DWMWA_EXTENDED_FRAME_BOUNDS */, out rect, Marshal.SizeOf(typeof(RECT)));
+                return rect;
+            }
+        }
+
         private void InternalBegin(Surface window)
         {
             _rewBatch.Begin(GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
+        }
+        private void InternalBegin(IntPtr hdc)
+        {
+            _rewBatch.Begin(hdc);
         }
         private void InternalEnd()
         {
@@ -140,6 +171,7 @@ namespace FoundationR
         public delegate bool Resize();
         public static event Resize ResizeEvent;
         public static event Event<InitializeArgs> InitializeEvent;
+        public static event Event<InputArgs> InputEvent;
         public static event Event LoadResourcesEvent;
         public static event Event<DrawingArgs> MainMenuEvent;
         public static event Event<PreDrawArgs> PreDrawEvent;
@@ -173,6 +205,10 @@ namespace FoundationR
         }
         public class InitializeArgs : IArgs
         {
+        }
+        public class InputArgs : IArgs
+        {
+            public Point mouse;
         }
         #endregion
     }

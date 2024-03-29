@@ -202,38 +202,39 @@ namespace FoundationR
             {
                 for (int j = 0; j < imageWidth; j++)
                 {
-                    int index = (i * imageWidth + j) * 4;
+                    if (j > bufferWidth)
+                    {
+                        continue;
+                    }
+                    if (i > bufferHeight)
+                    {
+                        continue;
+                    }
+
+                    int index = Math.Min((i * imageWidth + j) * 4, image.Length - 4);
                     int bufferIndex = ((y + i) * bufferWidth + (x + j)) * 4;
 
-                    if (j + x > bufferWidth)
-                    {
-                        return;
-                    }
-                    if (i + y > bufferHeight)
-                    {
-                        return;
-                    }
-                    if (bufferIndex >= buffer.Length)
+                    if (bufferIndex < 0 || bufferIndex >= buffer.Length - 4)
                         return;
                     Pixel back = new Pixel(
-                        buffer[bufferIndex + 3],
                         buffer[bufferIndex],
                         buffer[bufferIndex + 1],
-                        buffer[bufferIndex + 2]
+                        buffer[bufferIndex + 2],
+                        buffer[bufferIndex + 3]
                     );
                     Pixel fore = new Pixel(
-                        image[Math.Min(index + 3, image.Length - 1)],
-                        image[Math.Min(index, image.Length - 1)],
-                        image[Math.Min(index + 1, image.Length - 1)],
-                        image[Math.Min(index + 2, image.Length - 1)]
+                        image[index],
+                        image[index + 1],
+                        image[index + 2],
+                        image[index + 3]
                     );
 
                     back = back.Composite(fore);
 
-                    buffer[bufferIndex] = back.R;
-                    buffer[bufferIndex + 1] = back.G;
-                    buffer[bufferIndex + 2] = back.B;
                     buffer[bufferIndex + 3] = back.A;
+                    buffer[bufferIndex + 2] = back.R; 
+                    buffer[bufferIndex + 1] = back.G;
+                    buffer[bufferIndex] = back.B;
                 }
             }
         }
@@ -626,13 +627,13 @@ namespace FoundationR
         }
         public virtual void SetColor(Color color)
         {
+            A = color.A;
             R = color.R;
             G = color.G;
             B = color.B;
-            A = color.A;
         }
         public byte A = 255, R, G, B;
-        public virtual byte[] Buffer => hasAlpha ? new byte[] { R, G, B, A } : new byte[] { R, G, B };
+        public virtual byte[] Buffer => hasAlpha ? new byte[] { A, R, G, B } : new byte[] { R, G, B };
         public virtual Color color => Color.FromArgb(A, R, G, B);
         public override string ToString()
         {
@@ -901,7 +902,7 @@ namespace FoundationR
     {
         public static Color Blend(this Color color, Color backColor, double amount)
         {
-            byte a = 255; // unknown
+            byte a = (byte)Math.Min(color.A + backColor.A, 255); // unknown
             byte r = (byte)(color.R * amount + backColor.R * (1 - amount));
             byte g = (byte)(color.G * amount + backColor.G * (1 - amount));
             byte b = (byte)(color.B * amount + backColor.B * (1 - amount));
