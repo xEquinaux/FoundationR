@@ -153,20 +153,16 @@ namespace FoundationR
         }
         public virtual void DrawString(string font, string text, int x, int y, int width, int height)
         {
-            byte[] imageBytes = Encoding.ASCII.GetBytes(text);
-
-            using (MemoryStream ms = new MemoryStream(imageBytes))
+            Bitmap image = new Bitmap(width, height);
+            image.MakeTransparent(Color.Black);
+            using (Graphics g = Graphics.FromImage(image))
             {
-                Bitmap fingerprintImage = (Bitmap)Bitmap.FromStream(ms);
-                using (Graphics g = Graphics.FromImage(fingerprintImage))
-                {
-                    Font _font = new Font(font, 12, System.Drawing.FontStyle.Regular);
-                    System.Drawing.Brush brush = new SolidBrush(Color.White);
+                Font _font = new Font(font, 12, System.Drawing.FontStyle.Regular);
+                System.Drawing.Brush brush = new SolidBrush(Color.White);
 
-                    g.DrawString(text, _font, brush, new PointF(0, 0));
+                g.DrawString(text, _font, brush, new PointF(0, 0));
 
-                    Draw(REW.Extract(fingerprintImage, 32), x, y);
-                }
+                Draw(REW.Extract(image, 32), x, y);
             }
         }
         public void End()
@@ -456,7 +452,7 @@ namespace FoundationR
                     {
                         pixel = new Pixel(color.R, color.G, color.B);
                     }
-                    rew.data.AppendPixel(num * rew.NumChannels + rew.HeaderOffset, pixel);
+                    rew.data.color_AppendPixel(num * rew.NumChannels + rew.HeaderOffset, pixel);
                     pixel = null;
                     num++;
                 }
@@ -710,7 +706,7 @@ namespace FoundationR
             );
             return i;
         }
-        public static byte[] AppendPixel(this byte[] array, int index, Pixel i)
+        public static byte[] color_AppendPixel(this byte[] array, int index, Pixel i)
         {
             if (i.hasAlpha)
             {
@@ -724,6 +720,23 @@ namespace FoundationR
                 array[index] = i.R;
                 array[index + 1] = i.G;
                 array[index + 2] = i.B;
+            }
+            return array;
+        }
+        public static byte[] AppendPixel(this byte[] array, int index, Pixel i)
+        {
+            if (i.hasAlpha)
+            {
+                array[index + 3] = i.A;
+                array[index + 2] = i.R;
+                array[index + 1] = i.G;
+                array[index] = i.B;
+            }
+            else
+            {
+                array[index + 2] = i.R;
+                array[index + 1] = i.G;
+                array[index] = i.B;
             }
             return array;
         }
@@ -902,7 +915,7 @@ namespace FoundationR
     {
         public static Color Blend(this Color color, Color backColor, double amount)
         {
-            byte a = (byte)Math.Min(color.A + backColor.A, 255); // unknown
+            byte a = 255; // unknown
             byte r = (byte)(color.R * amount + backColor.R * (1 - amount));
             byte g = (byte)(color.G * amount + backColor.G * (1 - amount));
             byte b = (byte)(color.B * amount + backColor.B * (1 - amount));
