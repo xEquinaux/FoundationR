@@ -1,4 +1,5 @@
-﻿using System.Drawing.Imaging;
+﻿using System.Diagnostics.Eventing.Reader;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -154,13 +155,12 @@ namespace FoundationR
         public virtual void DrawString(string font, string text, int x, int y, int width, int height)
         {
             Bitmap image = new Bitmap(width, height);
-            image.MakeTransparent(Color.Black);
             using (Graphics g = Graphics.FromImage(image))
             {
                 Font _font = new Font(font, 12, System.Drawing.FontStyle.Regular);
                 System.Drawing.Brush brush = new SolidBrush(Color.White);
 
-                g.DrawString(text, _font, brush, new PointF(0, 0));
+                g.DrawString(text, _font, brush, new PointF(10, 10));
 
                 Draw(REW.Extract(image, 32), x, y);
             }
@@ -374,7 +374,7 @@ namespace FoundationR
         }
         public static REW CreateEmpty(int width, int height, PixelFormat format)
         {
-            return new REW(width, height, default, format);
+            return new REW(width, height, new byte[width * height * (format.BitsPerPixel / 8)], (byte)format.BitsPerPixel);
         }
         public static REW Dummy(int width, int height, short bpp)
         {
@@ -630,7 +630,7 @@ namespace FoundationR
         }
         public byte A = 255, R, G, B;
         public virtual byte[] Buffer => hasAlpha ? new byte[] { A, R, G, B } : new byte[] { R, G, B };
-        public virtual Color color => Color.FromArgb(A, R, G, B);
+        public virtual Color color => Color.FromArgb(B, G, R, A);
         public override string ToString()
         {
             return $"ARGB=({A}, {R}, {G}, {B})";
