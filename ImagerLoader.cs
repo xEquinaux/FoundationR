@@ -633,7 +633,7 @@ namespace FoundationR
         public virtual Color color => Color.FromArgb(A, R, G, B);
         public override string ToString()
         {
-            return $"\"RGBA=({A}, {R}, {G}, {B})\"";
+            return $"\"ARGB=({A}, {R}, {G}, {B})\"";
         }
     }
     public struct Point16
@@ -749,10 +749,11 @@ namespace FoundationR
             array[index + 3] = buffer[4];
             return array;
         }
-        public static void Composite(this REW one, REW tex, int x, int y)
+        public static REW Composite(this REW one, REW tex, int x, int y)
         {
             short width = tex.Width;
             short height = tex.Height;
+            REW output = REW.CreateEmpty(one.Width, one.Height, PixelFormats.Pbgra32);
             for (int n = 0; n < height; n++)
             {
                 for (int m = 0; m < width; m++)
@@ -763,17 +764,18 @@ namespace FoundationR
                     Pixel _two = tex.GetPixel(m, n);
                     if (_two.A < 255)
                     {
-                        one.SetPixel(m + x, n + y, _two.color.Blend(_one.color, 0.5d));
+                        output.SetPixel(m + x, n + y, _two.color.Blend(_one.color, 0.15d));
                     }
-                    else one.SetPixel(m + x, n + y, _two.color);
+                    else output.SetPixel(m + x, n + y, _two.color);
                 }
             }
+            return output;
         }
         public static Pixel Composite(this Pixel back, Pixel fore)
         {
             if (fore.A < 255)
             {
-                back.SetColor(back.color.Blend(fore.color, 0d));
+                back.SetColor(back.color.Blend(fore.color, 0.15d));
             }
             else back = fore;
             return back;
@@ -939,6 +941,7 @@ namespace FoundationR
 
             return Color.FromArgb(Math.Abs(argb.A), Math.Abs(r), Math.Abs(g), Math.Abs(b));
         }
+        [Obsolete("Literally does nothing.")]
         public static REW AlphaBlend(this REW surface, REW image)
         {
             // Load your images and get pixel data
