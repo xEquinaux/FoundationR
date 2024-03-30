@@ -7,6 +7,7 @@
     <UseWPF>true</UseWPF>
 	<UseWindowsForms>true</UseWindowsForms>
 	<LangVersion>10</LangVersion>
+	<StartupObject>FoundationR.App</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +20,18 @@
   <ItemGroup>
     <None Remove="FoundationR_1.0.zip" />
     <None Remove="REW_Converter.zip" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Textures\background.rew">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\bluepane.rew">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Textures\cans.rew">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

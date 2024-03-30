@@ -227,10 +227,10 @@ namespace FoundationR
 
                     back = back.Composite(fore);
 
-                    buffer[bufferIndex + 3] = back.A;
-                    buffer[bufferIndex + 2] = back.R; 
-                    buffer[bufferIndex + 1] = back.G;
                     buffer[bufferIndex] = back.B;
+                    buffer[bufferIndex + 1] = back.G; 
+                    buffer[bufferIndex + 2] = back.R;
+                    buffer[bufferIndex + 3] = back.A;
                 }
             }
         }
@@ -623,17 +623,17 @@ namespace FoundationR
         }
         public virtual void SetColor(Color color)
         {
-            A = color.A;
-            R = color.R;
-            G = color.G;
-            B = color.B;
+            A = color.B; //B
+            R = color.G; //G
+            G = color.R; //R
+            B = color.A; //A
         }
         public byte A = 255, R, G, B;
         public virtual byte[] Buffer => hasAlpha ? new byte[] { A, R, G, B } : new byte[] { R, G, B };
-        public virtual Color color => Color.FromArgb(B, G, R, A);
+        public virtual Color color => Color.FromArgb(A, R, G, B);
         public override string ToString()
         {
-            return $"ARGB=({A}, {R}, {G}, {B})";
+            return $"\"RGBA=({A}, {R}, {G}, {B})\"";
         }
     }
     public struct Point16
@@ -773,7 +773,7 @@ namespace FoundationR
         {
             if (fore.A < 255)
             {
-                back.SetColor(back.color.Blend(fore.color, 0.5d));
+                back.SetColor(back.color.Blend(fore.color, 0.9d));
             }
             else back = fore;
             return back;
@@ -915,11 +915,28 @@ namespace FoundationR
     {
         public static Color Blend(this Color color, Color backColor, double amount)
         {
-            byte a = 255; // unknown
+            byte a = (byte)((color.A + backColor.A) / 2); // unknown
             byte r = (byte)(color.R * amount + backColor.R * (1 - amount));
             byte g = (byte)(color.G * amount + backColor.G * (1 - amount));
             byte b = (byte)(color.B * amount + backColor.B * (1 - amount));
             return Color.FromArgb(a, r, g, b);
         }
+        public static Color AlphaBlend(this Color argb, Color blend)
+        {
+            if (argb.A == 0)
+                return blend;
+            if (blend.A == 0)
+                return argb;
+            if (argb.A == 255)
+                return argb;
+
+            int alpha = argb.A + 1;
+            int r = (alpha * argb.R + (255 - alpha) * blend.R) >> 8;
+            int g = (alpha * argb.G + (255 - alpha) * blend.G) >> 8;
+            int b = (alpha * argb.B + (255 - alpha) * blend.B) >> 8;
+
+            return Color.FromArgb(Math.Abs(argb.A), Math.Abs(r), Math.Abs(g), Math.Abs(b));
+        }
+
     }
 }

@@ -2,6 +2,7 @@
 using System.Data;
 using System.Windows;
 using Application = System.Windows.Application;
+using System.Security.RightsManagement;
 
 namespace FoundationR
 {
@@ -10,6 +11,9 @@ namespace FoundationR
     /// </summary>
     public partial class App : Application
     {
+        public App()
+        {
+            Main();
+        }
     }
-
 }
