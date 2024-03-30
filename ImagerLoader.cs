@@ -115,8 +115,8 @@ namespace FoundationR
         static extern IntPtr SelectObject(IntPtr hdc, IntPtr hbdiobj);
 
         public virtual int stride => width * ((BitsPerPixel + 7) / 8);
-        private int width, height;
-        private int oldWidth, oldHeight;
+        internal static int width, height;
+        private static int oldWidth, oldHeight;
         public virtual short BitsPerPixel { get; protected set; }
         protected byte[] backBuffer;
         IntPtr hdc;
@@ -127,18 +127,18 @@ namespace FoundationR
         }
         void Initialize(int width, int height)
         {
-            this.width = width;
-            this.height = height;
+            RewBatch.width = width;
+            RewBatch.height = height;
             backBuffer = new byte[width * height * (BitsPerPixel / 8)];
         }
         public bool Resize(int width, int height)
         {
             if (oldWidth != width || oldHeight != height)
             {
-                this.width = width;
-                this.oldWidth = width;
-                this.height = height;
-                this.oldHeight = height;
+                RewBatch.width = width;
+                RewBatch.oldWidth = width;
+                RewBatch.height = height;
+                RewBatch.oldHeight = height;
                 backBuffer = new byte[width * height * (BitsPerPixel / 8)];
                 return true;
             }
@@ -151,7 +151,7 @@ namespace FoundationR
         }
         public virtual void Draw(REW image, int x, int y)
         {
-            CompositeImage(backBuffer, this.width, this.height, image.GetPixels(), image.Width, image.Height, x, y);
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x, y);
         }
         public virtual void DrawString(string font, string text, int x, int y, int width, int height)
         {
@@ -171,12 +171,12 @@ namespace FoundationR
             BitmapInfoHeader bmih = new BitmapInfoHeader()
             {
                 Size = 40,
-                Width = this.width,
-                Height = this.height,
+                Width = RewBatch.width,
+                Height = RewBatch.height,
                 Planes = 1,
                 BitCount = 32,
                 Compression = (uint)BitmapCompressionMode.BI_BITFIELDS,
-                SizeImage = (uint)(this.width * this.height * (BitsPerPixel / 8)),
+                SizeImage = (uint)(RewBatch.width * RewBatch.height * (BitsPerPixel / 8)),
                 XPelsPerMeter = 96,
                 YPelsPerMeter = 96,
                 RedMask = 0x00FF0000,
@@ -186,8 +186,8 @@ namespace FoundationR
                 CSType = BitConverter.ToUInt32(new byte[] { 32, 110, 106, 87 }, 0)
             };
             GCHandle h = GCHandle.Alloc(bmih, GCHandleType.Pinned);
-            GCHandle h2 = GCHandle.Alloc(FlipVertically(backBuffer, this.width, this.height), GCHandleType.Pinned);
-            SetDIBitsToDevice(hdc, 0, 0, this.width, this.height, 0, 0, 0, this.height, h2.AddrOfPinnedObject(), h.AddrOfPinnedObject(), 0);
+            GCHandle h2 = GCHandle.Alloc(FlipVertically(backBuffer, RewBatch.width, RewBatch.height), GCHandleType.Pinned);
+            SetDIBitsToDevice(hdc, 0, 0, RewBatch.width, RewBatch.height, 0, 0, 0, RewBatch.height, h2.AddrOfPinnedObject(), h.AddrOfPinnedObject(), 0);
             h.Free();
             h2.Free();
             ReleaseDC(IntPtr.Zero, hdc);
@@ -724,11 +724,18 @@ namespace FoundationR
         }
         public static void Composite(this byte[] input, byte[] layer, int x, int y, int width, int height)
         {
+            int w = width;
+            if (w > RewBatch.width)
+            {
+                w = RewBatch.width;
+            }
             for (int j = 0; j < height; j++)
-            { 
-                for (int i = 0; i < width; i += 4)
+            {
+                for (int i = 0; i < w; i += 4)
                 {
-                    int whoAmI = (y + j) * 640 + (x + i);
+                    if (j > RewBatch.height) continue;
+                    if (i > RewBatch.width) continue;
+                    int whoAmI = (y + j) * w + (x + i);
                     Pixel _one = Pixel.Extract32bit(input, whoAmI);
                     Pixel _two = Pixel.Extract32bit(layer, j * width + i);
                     if (_two.A < 255)
