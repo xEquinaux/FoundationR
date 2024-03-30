@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.Eventing.Reader;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -194,45 +195,7 @@ namespace FoundationR
         }
         public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y)
         {
-            for (int i = 0; i < imageHeight; i++)
-            {
-                for (int j = 0; j < imageWidth; j++)
-                {
-                    if (j > bufferWidth)
-                    {
-                        continue;
-                    }
-                    if (i > bufferHeight)
-                    {
-                        continue;
-                    }
-
-                    int index = Math.Min((i * imageWidth + j) * 4, image.Length - 4);
-                    int bufferIndex = ((y + i) * bufferWidth + (x + j)) * 4;
-
-                    if (bufferIndex < 0 || bufferIndex >= buffer.Length - 4)
-                        return;
-                    Pixel back = new Pixel(
-                        buffer[bufferIndex],
-                        buffer[bufferIndex + 1],
-                        buffer[bufferIndex + 2],
-                        buffer[bufferIndex + 3]
-                    );
-                    Pixel fore = new Pixel(
-                        image[index],
-                        image[index + 1],
-                        image[index + 2],
-                        image[index + 3]
-                    );
-
-                    back = back.Composite(fore);
-
-                    buffer[bufferIndex] = back.B;
-                    buffer[bufferIndex + 1] = back.G; 
-                    buffer[bufferIndex + 2] = back.R;
-                    buffer[bufferIndex + 3] = back.A;
-                }
-            }
+            buffer.Composite(image, x, y, imageWidth, imageHeight);
         }
         public byte[] FlipVertically(byte[] pixels, int width, int height)
         {
@@ -612,6 +575,16 @@ namespace FoundationR
                 buffer[3]
             );
         }
+        public static Pixel Extract32bit(byte[] buffer, int offset)
+        {
+            return new Pixel
+            (
+                buffer[0 + offset],
+                buffer[1 + offset],
+                buffer[2 + offset],
+                buffer[3 + offset]
+            );
+        }
         public static Pixel Extract24bit(byte[] buffer)
         {
             return new Pixel
@@ -748,6 +721,33 @@ namespace FoundationR
             array[index + 2] = buffer[3];   // y
             array[index + 3] = buffer[4];
             return array;
+        }
+        public static void Composite(this byte[] input, byte[] layer, int x, int y, int width, int height)
+        {
+            for (int j = 0; j < height; j++)
+            { 
+                for (int i = 0; i < width; i += 4)
+                {
+                    int whoAmI = (y + j) * 640 + (x + i);
+                    Pixel _one = Pixel.Extract32bit(input, whoAmI);
+                    Pixel _two = Pixel.Extract32bit(layer, j * width + i);
+                    if (_two.A < 255)
+                    {
+                        Color blend = _two.color.Blend(_one.color, 0.15d);
+                        input[whoAmI] = blend.B;
+                        input[whoAmI + 1] = blend.G;
+                        input[whoAmI + 2] = blend.R;
+                        input[whoAmI + 3] = blend.A;
+                    }
+                    else
+                    {
+                        input[whoAmI] = 255;
+                        input[whoAmI + 1] = _two.color.R;
+                        input[whoAmI + 2] = _two.color.G;
+                        input[whoAmI + 3] = _two.color.B;
+                    }
+                }
+            }
         }
         public static REW Composite(this REW one, REW tex, int x, int y)
         {
@@ -915,7 +915,6 @@ namespace FoundationR
     }
     public static class ColorExtensions
     {
-        [Obsolete("Does not alpha blend correctly.")]
         public static Color Blend(this Color color, Color foreColor, double amount)
         {
             byte a = 255; // unknown
