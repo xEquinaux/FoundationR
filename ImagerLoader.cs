@@ -154,14 +154,14 @@ namespace FoundationR
         }
         public virtual void DrawString(string font, string text, int x, int y, int width, int height)
         {
-            Bitmap image = new Bitmap(width, height);
+            using (Bitmap image = new Bitmap(width, height))
             using (Graphics g = Graphics.FromImage(image))
             {
                 Font _font = new Font(font, 12, System.Drawing.FontStyle.Regular);
                 System.Drawing.Brush brush = new SolidBrush(Color.White);
 
                 g.DrawString(text, _font, brush, new PointF(10, 10));
-
+                
                 Draw(REW.Extract(image, 32), x, y);
             }
         }
@@ -623,10 +623,10 @@ namespace FoundationR
         }
         public virtual void SetColor(Color color)
         {
-            A = color.B; //B
-            R = color.G; //G
-            G = color.R; //R
-            B = color.A; //A
+            A = color.A; //B
+            R = color.R; //G
+            G = color.G; //R
+            B = color.B; //A
         }
         public byte A = 255, R, G, B;
         public virtual byte[] Buffer => hasAlpha ? new byte[] { A, R, G, B } : new byte[] { R, G, B };
@@ -773,7 +773,7 @@ namespace FoundationR
         {
             if (fore.A < 255)
             {
-                back.SetColor(back.color.Blend(fore.color, 0.9d));
+                back.SetColor(back.color.Blend(fore.color, 0d));
             }
             else back = fore;
             return back;
@@ -913,14 +913,16 @@ namespace FoundationR
     }
     public static class ColorExtensions
     {
-        public static Color Blend(this Color color, Color backColor, double amount)
+        [Obsolete("Does not alpha blend correctly.")]
+        public static Color Blend(this Color color, Color foreColor, double amount)
         {
-            byte a = (byte)((color.A + backColor.A) / 2); // unknown
-            byte r = (byte)(color.R * amount + backColor.R * (1 - amount));
-            byte g = (byte)(color.G * amount + backColor.G * (1 - amount));
-            byte b = (byte)(color.B * amount + backColor.B * (1 - amount));
+            byte a = 255; // unknown
+            byte r = (byte)(color.R * amount + foreColor.R * (1 - amount));
+            byte g = (byte)(color.G * amount + foreColor.G * (1 - amount));
+            byte b = (byte)(color.B * amount + foreColor.B * (1 - amount));
             return Color.FromArgb(a, r, g, b);
         }
+        [Obsolete("Transforms the textures into something chaotic.")]
         public static Color AlphaBlend(this Color argb, Color blend)
         {
             if (argb.A == 0)
@@ -937,6 +939,50 @@ namespace FoundationR
 
             return Color.FromArgb(Math.Abs(argb.A), Math.Abs(r), Math.Abs(g), Math.Abs(b));
         }
+        public static REW AlphaBlend(this REW surface, REW image)
+        {
+            // Load your images and get pixel data
+            //Bitmap bitmap = new Bitmap("path/to/your/opaque_bitmap.bmp");
+            //Bitmap pngImage = new Bitmap("path/to/your/translucent_png.png");
 
+            int w = 0, h = 0;
+            // Ensure both images have the same dimensions
+            if (surface.Width != image.Width || surface.Height != image.Height)
+            {
+                // Handle dimension mismatch
+                // (e.g., resize one of the images to match the other)
+                if (surface.Width > image.Width)
+                {
+                    w = image.Width;
+                }
+                else w = surface.Width;
+                if (surface.Height > image.Height)
+                {
+                    h = image.Height;
+                }
+                else h = surface.Height;
+            }
+
+            // Iterate through pixels
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    Pixel pngPixel = image.GetPixel(x, y);
+                    Pixel bmpPixel = surface.GetPixel(x, y);
+
+                    // Blend based on alpha (transparency)
+                    int blendedR = (int)(pngPixel.A * pngPixel.R / 255.0 + (1 - pngPixel.A / 255.0) * bmpPixel.R);
+                    int blendedG = (int)(pngPixel.A * pngPixel.G / 255.0 + (1 - pngPixel.A / 255.0) * bmpPixel.G);
+                    int blendedB = (int)(pngPixel.A * pngPixel.B / 255.0 + (1 - pngPixel.A / 255.0) * bmpPixel.B);
+
+                    // Set the blended pixel in the Bitmap
+                    surface.SetPixel(x, y, Color.FromArgb(bmpPixel.A, blendedR, blendedG, blendedB));
+                }
+            }
+            // Save or use the composited Bitmap
+            //bitmap.Save("path/to/output/composited_image.bmp");
+            return surface;
+        }
     }
 }
