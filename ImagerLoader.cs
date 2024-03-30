@@ -120,6 +120,7 @@ namespace FoundationR
         internal static int width, height;
         private static int oldWidth, oldHeight;
         public virtual short BitsPerPixel { get; protected set; }
+        protected byte[] oldBackBuffer;
         protected byte[] backBuffer;
         IntPtr hdc;
         public RewBatch(int width, int height, int bitsPerPixel = 32)
@@ -132,6 +133,7 @@ namespace FoundationR
             RewBatch.width = width;
             RewBatch.height = height;
             backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+            oldBackBuffer = backBuffer;
         }
         public bool Resize(int width, int height)
         {
@@ -142,6 +144,7 @@ namespace FoundationR
                 RewBatch.height = height;
                 RewBatch.oldHeight = height;
                 backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+                oldBackBuffer = backBuffer;
                 return true;
             }
             return false;
@@ -158,7 +161,7 @@ namespace FoundationR
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x, y);
         }
         
-        public void DrawString(string font, string text, int x, int y, int width, int height)
+        public virtual void DrawString(string font, string text, int x, int y, int width, int height)
         {
             Bitmap image = new Bitmap(width, height);
             using (Graphics graphics = Graphics.FromImage(image))
@@ -192,12 +195,14 @@ namespace FoundationR
                 AlphaMask = 0xFF000000,
                 CSType = BitConverter.ToUInt32(new byte[] { 32, 110, 106, 87 }, 0)
             };
+            backBuffer = FlipVertically(backBuffer, RewBatch.width, RewBatch.height);
             GCHandle h = GCHandle.Alloc(bmih, GCHandleType.Pinned);
-            GCHandle h2 = GCHandle.Alloc(FlipVertically(backBuffer, RewBatch.width, RewBatch.height), GCHandleType.Pinned);
+            GCHandle h2 = GCHandle.Alloc(BlendFrames(oldBackBuffer, backBuffer, 0f), GCHandleType.Pinned);
             SetDIBitsToDevice(hdc, 0, 0, RewBatch.width, RewBatch.height, 0, 0, 0, RewBatch.height, h2.AddrOfPinnedObject(), h.AddrOfPinnedObject(), 0);
             h.Free();
             h2.Free();
             ReleaseDC(IntPtr.Zero, hdc);
+            oldBackBuffer = backBuffer;
             backBuffer = null;
         }
         public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y, bool text = false)
@@ -232,6 +237,8 @@ namespace FoundationR
                         image[index + 2],
                         image[index + 3]
                     );
+                    if (back.A == 0 && fore.A == 0)
+                        continue;
 
                     if (fore.A < 255 && !text)
                     {
@@ -275,6 +282,12 @@ namespace FoundationR
         }
         public byte[] BlendFrames(byte[] frame1, byte[] frame2, float alpha)
         {
+            // Init property
+            if (frame1.Length == 0)
+            {
+                return frame2;
+            }
+
             // Check that the input frames have the same length
             if (frame1.Length != frame2.Length)
             {
