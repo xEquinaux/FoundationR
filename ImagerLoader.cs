@@ -577,6 +577,8 @@ namespace FoundationR
         }
         public static Pixel Extract32bit(byte[] buffer, int offset)
         {
+            if (offset > buffer.Length - 4 || offset < 0)
+                return new Pixel();
             return new Pixel
             (
                 buffer[0 + offset],
@@ -729,13 +731,15 @@ namespace FoundationR
             {
                 w = RewBatch.width;
             }
-            for (int j = 0; j < height; j++)
+            Parallel.For(0, height, j =>
             {
                 for (int i = 0; i < w; i += 4)
                 {
-                    if (j > RewBatch.height) continue;
-                    if (i > RewBatch.width) continue;
                     int whoAmI = (y + j) * w + (x + i);
+                    if (whoAmI < 0 || whoAmI > input.Length)
+                    {
+                        continue;
+                    }
                     Pixel _one = Pixel.Extract32bit(input, whoAmI);
                     Pixel _two = Pixel.Extract32bit(layer, j * width + i);
                     if (_two.A < 255)
@@ -754,7 +758,7 @@ namespace FoundationR
                         input[whoAmI + 3] = _two.color.B;
                     }
                 }
-            }
+            });
         }
         public static REW Composite(this REW one, REW tex, int x, int y)
         {
