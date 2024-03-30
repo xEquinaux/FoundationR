@@ -195,14 +195,12 @@ namespace FoundationR
                 AlphaMask = 0xFF000000,
                 CSType = BitConverter.ToUInt32(new byte[] { 32, 110, 106, 87 }, 0)
             };
-            backBuffer = FlipVertically(backBuffer, RewBatch.width, RewBatch.height);
             GCHandle h = GCHandle.Alloc(bmih, GCHandleType.Pinned);
-            GCHandle h2 = GCHandle.Alloc(BlendFrames(oldBackBuffer, backBuffer, 0f), GCHandleType.Pinned);
+            GCHandle h2 = GCHandle.Alloc(FlipVertically(backBuffer, RewBatch.width, RewBatch.height), GCHandleType.Pinned);
             SetDIBitsToDevice(hdc, 0, 0, RewBatch.width, RewBatch.height, 0, 0, 0, RewBatch.height, h2.AddrOfPinnedObject(), h.AddrOfPinnedObject(), 0);
             h.Free();
             h2.Free();
             ReleaseDC(IntPtr.Zero, hdc);
-            oldBackBuffer = backBuffer;
             backBuffer = null;
         }
         public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y, bool text = false)
