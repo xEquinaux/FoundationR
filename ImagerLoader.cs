@@ -153,6 +153,8 @@ namespace FoundationR
         }
         public virtual void Draw(REW image, int x, int y)
         {
+            if (x > RewBatch.width)  return;
+            if (y > RewBatch.height) return;
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x, y);
         }
         
@@ -161,11 +163,13 @@ namespace FoundationR
             Bitmap image = new Bitmap(width, height);
             using (Graphics graphics = Graphics.FromImage(image))
             {
+                graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
                 Font _font = new Font("Arial", 12);
                 SolidBrush brush = new SolidBrush(Color.White);
                 PointF point = new PointF(10, 10);
                 graphics.DrawString(text, _font, brush, point);
-                CompositeImage(backBuffer, RewBatch.width, RewBatch.height, REW.Extract(image, 32).GetPixels(), width, height, x, y);
+                
+                Draw(REW.Extract(image, 32), x, y);
             }
         }
 
@@ -198,13 +202,13 @@ namespace FoundationR
         }
         public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y, bool text = false)
         {
-            for (int i = 0; i < imageHeight; i++)
+            Parallel.For(0, imageHeight, i =>
             {
                 for (int j = 0; j < imageWidth; j++)
                 {
                     if (j > bufferWidth)
                     {
-                        continue;
+                        return;
                     }
                     if (i > bufferHeight)
                     {
@@ -247,7 +251,7 @@ namespace FoundationR
                         buffer[bufferIndex + 3] = 255;
                     }
                 }
-            }
+            });
         }                                         
         public byte[] FlipVertically(byte[] pixels, int width, int height)
         {
