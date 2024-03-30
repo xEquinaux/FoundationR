@@ -155,19 +155,20 @@ namespace FoundationR
         {
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x, y);
         }
-        public virtual void DrawString(string font, string text, int x, int y, int width, int height)
+        
+        public void DrawString(string font, string text, int x, int y, int width, int height)
         {
-            using (Bitmap image = new Bitmap(width, height))
-            using (Graphics g = Graphics.FromImage(image))
+            Bitmap image = new Bitmap(width, height);
+            using (Graphics graphics = Graphics.FromImage(image))
             {
-                Font _font = new Font(font, 12, System.Drawing.FontStyle.Regular);
-                System.Drawing.Brush brush = new SolidBrush(Color.White);
-
-                g.DrawString(text, _font, brush, new PointF(10, 10));
-                
-                backBuffer.Composite(REW.Extract(image, 32), x, y);
+                Font _font = new Font("Arial", 12);
+                SolidBrush brush = new SolidBrush(Color.White);
+                PointF point = new PointF(10, 10);
+                graphics.DrawString(text, _font, brush, point);
+                CompositeImage(backBuffer, RewBatch.width, RewBatch.height, REW.Extract(image, 32).GetPixels(), width, height, x, y);
             }
         }
+
         public void End()
         {
             BitmapInfoHeader bmih = new BitmapInfoHeader()
@@ -195,7 +196,7 @@ namespace FoundationR
             ReleaseDC(IntPtr.Zero, hdc);
             backBuffer = null;
         }
-        public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y)
+        public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y, bool text = false)
         {
             for (int i = 0; i < imageHeight; i++)
             {
@@ -207,7 +208,7 @@ namespace FoundationR
                     }
                     if (i > bufferHeight)
                     {
-                        continue;
+                        return;
                     }
 
                     int index = Math.Min((i * imageWidth + j) * 4, image.Length - 4);
@@ -228,7 +229,7 @@ namespace FoundationR
                         image[index + 3]
                     );
 
-                    if (fore.A < 255)
+                    if (fore.A < 255 && !text)
                     {
                         Color blend = fore.color.Blend(back.color, 0.15d);
                         buffer[bufferIndex] = blend.B;
@@ -247,7 +248,7 @@ namespace FoundationR
                     }
                 }
             }
-        }
+        }                                         
         public byte[] FlipVertically(byte[] pixels, int width, int height)
         {
             int bytesPerPixel = 4;
