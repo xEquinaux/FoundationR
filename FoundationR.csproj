@@ -18,16 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="OpenGL.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Remove="FoundationR_1.0.zip" />
     <None Remove="REW_Converter.zip" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="OpenGL.cs" />
   </ItemGroup>
 
   <ItemGroup>
