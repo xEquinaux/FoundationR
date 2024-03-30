@@ -271,7 +271,69 @@ namespace FoundationR
                     }
                 }
             }
+            return output;
+        }
+        public byte[] BlendFrames(byte[] frame1, byte[] frame2, float alpha)
+        {
+            // Check that the input frames have the same length
+            if (frame1.Length != frame2.Length)
+            {
+                throw new ArgumentException("Input frames must have the same length.");
+            }
 
+            // Create a new byte array for the output frame
+            byte[] output = new byte[frame1.Length];
+
+            // Iterate over the pixel data in the input frames
+            for (int i = 0; i < frame1.Length; i += 4)
+            {
+                // Calculate the blended value for each color channel
+                for (int j = 0; j < 4; j++)
+                {
+                    float value1 = frame1[i + j] / 255f;
+                    float value2 = frame2[i + j] / 255f;
+
+                    // Blend the color values using the specified alpha value
+                    float blendedValue = value1 * (1 - alpha) + value2 * alpha;
+
+                    // Convert the blended value back to a byte and store it in the output frame
+                    output[i + j] = (byte)(blendedValue * 255);
+                }
+            }
+
+            // Return the output frame
+            return output;
+        }
+        public Bitmap BlendFrames(Bitmap frame1, Bitmap frame2, float alpha)
+        {
+            // Create a new bitmap with the same size as the input frames
+            Bitmap output = new Bitmap(frame1.Width, frame1.Height);
+
+            // Create a Graphics object from the output bitmap
+            using (Graphics g = Graphics.FromImage(output))
+            {
+                // Draw the first frame onto the output bitmap
+                g.DrawImage(frame1, new Rectangle(0, 0, frame1.Width, frame1.Height));
+
+                // Create a color matrix with the specified alpha value
+                ColorMatrix matrix = new ColorMatrix(new float[][]
+                {
+                    new float[] {1, 0, 0, 0, 0},
+                    new float[] {0, 1, 0, 0, 0},
+                    new float[] {0, 0, 1, 0, 0},
+                    new float[] {0, 0, 0, alpha, 0},
+                    new float[] {0, 0, 0, 0, 1}
+                });
+
+                // Create a new ImageAttributes object and set its color matrix
+                ImageAttributes attributes = new ImageAttributes();
+                attributes.SetColorMatrix(matrix);
+
+                // Draw the second frame onto the output bitmap with the specified ImageAttributes
+                g.DrawImage(frame2, new Rectangle(0, 0, frame2.Width, frame2.Height), 0, 0, frame2.Width, frame2.Height, GraphicsUnit.Pixel, attributes);
+            }
+
+            // Return the output bitmap
             return output;
         }
     }
