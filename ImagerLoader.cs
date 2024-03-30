@@ -165,7 +165,7 @@ namespace FoundationR
 
                 g.DrawString(text, _font, brush, new PointF(10, 10));
                 
-                Draw(REW.Extract(image, 32), x, y);
+                backBuffer.Composite(REW.Extract(image, 32), x, y);
             }
         }
         public void End()
@@ -197,8 +197,6 @@ namespace FoundationR
         }
         public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y)
         {
-            //buffer.Composite(image, x, y, imageWidth, imageHeight);
-            //return;
             for (int i = 0; i < imageHeight; i++)
             {
                 for (int j = 0; j < imageWidth; j++)
@@ -247,8 +245,6 @@ namespace FoundationR
                         buffer[bufferIndex + 2] = fore.color.R;
                         buffer[bufferIndex + 3] = 255;
                     }
-
-                    //back = back.Composite(fore);
                 }
             }
         }
@@ -366,6 +362,7 @@ namespace FoundationR
                 {
                     return;
                 }
+                fs = new FileStream(outpath, FileMode.Create);
             }
             result.Write(new BinaryWriter(fs));
             fs.Dispose();
@@ -527,6 +524,7 @@ namespace FoundationR
 
             BitmapData data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bmpf);
             Marshal.Copy(data.Scan0, result.data, headerOffset, bitmap.Width * bitmap.Height * 4);
+
             bitmap.UnlockBits(data);
             bitmap.Dispose();
             return result;
