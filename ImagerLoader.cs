@@ -1,8 +1,10 @@
-﻿using System.Diagnostics.Eventing.Reader;
+﻿using System;
+using System.Diagnostics.Eventing.Reader;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Policy;
 using System.Text;
 using System.Windows;
 using System.Windows.Forms;
@@ -195,7 +197,60 @@ namespace FoundationR
         }
         public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y)
         {
-            buffer.Composite(image, x, y, imageWidth, imageHeight);
+            //buffer.Composite(image, x, y, imageWidth, imageHeight);
+            //return;
+            for (int i = 0; i < imageHeight; i++)
+            {
+                for (int j = 0; j < imageWidth; j++)
+                {
+                    if (j > bufferWidth)
+                    {
+                        continue;
+                    }
+                    if (i > bufferHeight)
+                    {
+                        continue;
+                    }
+
+                    int index = Math.Min((i * imageWidth + j) * 4, image.Length - 4);
+                    int bufferIndex = ((y + i) * bufferWidth + (x + j)) * 4;
+
+                    if (bufferIndex < 0 || bufferIndex >= buffer.Length - 4)
+                        return;
+                    Pixel back = new Pixel(
+                        buffer[bufferIndex + 3],
+                        buffer[bufferIndex + 2],
+                        buffer[bufferIndex + 1],
+                        buffer[bufferIndex]
+                    );
+                    Pixel fore = new Pixel(
+                        image[index],
+                        image[index + 1],
+                        image[index + 2],
+                        image[index + 3]
+                    );
+
+                    if (fore.A < 255)
+                    {
+                        Color blend = fore.color.Blend(back.color, 0.15d);
+                        buffer[bufferIndex] = blend.B;
+                        buffer[bufferIndex + 1] = blend.G;
+                        buffer[bufferIndex + 2] = blend.R;
+
+                        if (back.A == 255) buffer[bufferIndex + 3] = 255;
+                        else buffer[bufferIndex + 3] = blend.A;
+                    }
+                    else
+                    {
+                        buffer[bufferIndex] = fore.color.B;
+                        buffer[bufferIndex + 1] = fore.color.G;
+                        buffer[bufferIndex + 2] = fore.color.R;
+                        buffer[bufferIndex + 3] = 255;
+                    }
+
+                    //back = back.Composite(fore);
+                }
+            }
         }
         public byte[] FlipVertically(byte[] pixels, int width, int height)
         {
@@ -508,6 +563,10 @@ namespace FoundationR
         {
             int i = this.Width;
             int whoAmI = y * i + x;
+            if (whoAmI < 0)
+            {
+                return new Pixel();
+            }
             if (NumChannels == 4)
             {
                 return new Pixel(
@@ -530,6 +589,10 @@ namespace FoundationR
         {
             int i = this.Width;
             int whoAmI = y * i + x;
+            if (whoAmI < 0)
+            {
+                return;
+            }
             if (NumChannels == 4)
             {
                 data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset)] = color.A;
@@ -760,11 +823,33 @@ namespace FoundationR
                 }
             });
         }
+        public static REW Composite(this byte[] one, REW tex, int x, int y)
+        {
+            short width = tex.Width;
+            short height = tex.Height;
+            REW output = REW.Create(RewBatch.width, RewBatch.height, one, 32);
+            for (int n = 0; n < height; n++)
+            {
+                for (int m = 0; m < width; m++)
+                {
+                    if (n > output.Height || m > output.Width)
+                        continue;
+                    Pixel _one = output.GetPixel(m + x, n + y);
+                    Pixel _two = tex.GetPixel(m, n);
+                    if (_two.A < 255)
+                    {
+                        output.SetPixel(m + x, n + y, _two.color.Blend(_one.color, 0.15d));
+                    }
+                    else output.SetPixel(m + x, n + y, _two.color);
+                }
+            }
+            return output;
+        }
         public static REW Composite(this REW one, REW tex, int x, int y)
         {
             short width = tex.Width;
             short height = tex.Height;
-            REW output = REW.CreateEmpty(one.Width, one.Height, PixelFormats.Pbgra32);
+            REW output = REW.CreateEmpty(one.Width, one.Height, PixelFormats.Bgr32);
             for (int n = 0; n < height; n++)
             {
                 for (int m = 0; m < width; m++)
@@ -782,14 +867,14 @@ namespace FoundationR
             }
             return output;
         }
-        public static Pixel Composite(this Pixel back, Pixel fore)
+        public static Pixel Composite(this Pixel one, Pixel two)
         {
-            if (fore.A < 255)
+            if (two.A < 255)
             {
-                back.SetColor(back.color.Blend(fore.color, 0.15d));
+                one.SetColor(two.color.Blend(one.color, 0.85d));
             }
-            else back = fore;
-            return back;
+            else one = two;
+            return one;
         }
         public static Pixel PreMultiply(this Pixel pixel)
         {
@@ -928,7 +1013,7 @@ namespace FoundationR
     {
         public static Color Blend(this Color color, Color foreColor, double amount)
         {
-            byte a = 255; // unknown
+            byte a = (byte)((color.A + foreColor.A) / 2); // unknown
             byte r = (byte)(color.R * amount + foreColor.R * (1 - amount));
             byte g = (byte)(color.G * amount + foreColor.G * (1 - amount));
             byte b = (byte)(color.B * amount + foreColor.B * (1 - amount));
