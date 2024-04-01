@@ -51,6 +51,7 @@ namespace FoundationR
         public virtual void RegisterHooks()
         {
         }
+        [STAThread]
         internal void Run(Surface window)
         {
             this.RegisterHooks();
@@ -59,8 +60,10 @@ namespace FoundationR
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs());
             HDC = FindWindowByCaption(IntPtr.Zero, window.Title);
-            Task t = new Task(() => draw(ref flag, window));
-            Task t2 = new Task(() => update(ref flag2));
+            Thread t = new Thread(() => draw(ref flag, window));
+            Thread t2 = new Thread(() => update(ref flag2));
+            t.SetApartmentState(ApartmentState.STA);
+            t2.SetApartmentState(ApartmentState.STA);
             t.Start();
             t2.Start();
             GameTime.Start();
@@ -75,10 +78,10 @@ namespace FoundationR
                         taskDone = false;
                         DrawTime = watch1.Elapsed;
                         watch1.Restart();
-                        window.form?.Invoke(() =>
-                        {
-                            InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
-                        });
+                        //window.form?.Invoke(() =>
+                        //{
+                        //    InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
+                        //});
                         {
                             InternalBegin(window);
                             if ((bool)ResizeEvent?.Invoke())
@@ -202,6 +205,7 @@ namespace FoundationR
             public Camera CAMERA;
             public Rectangle screen;
             public int offX, offY;
+            public byte[] backBuffer;
         }
         public class InitializeArgs : IArgs
         {

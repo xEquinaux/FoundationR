@@ -3,6 +3,7 @@ using System.Diagnostics.Eventing.Reader;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Security.Policy;
 using System.Text;
@@ -120,8 +121,7 @@ namespace FoundationR
         internal static int width, height;
         private static int oldWidth, oldHeight;
         public virtual short BitsPerPixel { get; protected set; }
-        protected byte[] oldBackBuffer;
-        protected byte[] backBuffer;
+        internal static byte[] backBuffer;
         IntPtr hdc;
         public RewBatch(int width, int height, int bitsPerPixel = 32)
         {
@@ -133,7 +133,6 @@ namespace FoundationR
             RewBatch.width = width;
             RewBatch.height = height;
             backBuffer = new byte[width * height * (BitsPerPixel / 8)];
-            oldBackBuffer = backBuffer;
         }
         public bool Resize(int width, int height)
         {
@@ -144,7 +143,6 @@ namespace FoundationR
                 RewBatch.height = height;
                 RewBatch.oldHeight = height;
                 backBuffer = new byte[width * height * (BitsPerPixel / 8)];
-                oldBackBuffer = backBuffer;
                 return true;
             }
             return false;
@@ -154,22 +152,56 @@ namespace FoundationR
             backBuffer = new byte[width * height * (BitsPerPixel / 8)];
             this.hdc = hdc;
         }
+        public virtual void Draw(REW image, Rectangle rectangle)
+        {
+            if (rectangle.X > RewBatch.width) return;
+            if (rectangle.Y > RewBatch.height) return;
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y);
+        }
         public virtual void Draw(REW image, int x, int y)
         {
             if (x > RewBatch.width)  return;
             if (y > RewBatch.height) return;
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x, y);
         }
-        
-        public virtual void DrawString(string font, string text, int x, int y, int width, int height)
+
+        public virtual void DrawString(string font, string text, Vector2 v2, Color color)
         {
             Bitmap image = new Bitmap(width, height);
             using (Graphics graphics = Graphics.FromImage(image))
             {
                 graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
                 Font _font = new Font("Arial", 12);
-                SolidBrush brush = new SolidBrush(Color.White);
-                PointF point = new PointF(10, 10);
+                SolidBrush brush = new SolidBrush(color);
+                PointF point = new PointF(0, 0);
+                graphics.DrawString(text, _font, brush, point);
+
+                Draw(REW.Extract(image, 32), (int)v2.X, (int)v2.Y);
+            }
+        }
+        public virtual void DrawString(string font, string text, Rectangle rectangle, Color color)
+        {
+            Bitmap image = new Bitmap(width, height);
+            using (Graphics graphics = Graphics.FromImage(image))
+            {
+                graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                Font _font = new Font("Arial", 12);
+                SolidBrush brush = new SolidBrush(color);
+                PointF point = new PointF(0, 0);
+                graphics.DrawString(text, _font, brush, point);
+
+                Draw(REW.Extract(image, 32), rectangle.X, rectangle.Y);
+            }
+        }
+        public virtual void DrawString(string font, string text, int x, int y, int width, int height, Color color)
+        {
+            Bitmap image = new Bitmap(width, height);
+            using (Graphics graphics = Graphics.FromImage(image))
+            {
+                graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                Font _font = new Font("Arial", 12);
+                SolidBrush brush = new SolidBrush(color);
+                PointF point = new PointF(0, 0);
                 graphics.DrawString(text, _font, brush, point);
                 
                 Draw(REW.Extract(image, 32), x, y);
@@ -872,15 +904,15 @@ namespace FoundationR
             }
             Parallel.For(0, height, j =>
             {
-                for (int i = 0; i < w; i += 4)
+                for (int i = 0; i < w; i++)
                 {
-                    int whoAmI = (y + j) * w + (x + i);
+                    int whoAmI = ((y + j) * w + (x + i)) * 4;
                     if (whoAmI < 0 || whoAmI > input.Length)
                     {
                         continue;
                     }
                     Pixel _one = Pixel.Extract32bit(input, whoAmI);
-                    Pixel _two = Pixel.Extract32bit(layer, j * width + i);
+                    Pixel _two = Pixel.Extract32bit(layer, (j * width + i) * 4);
                     if (_two.A < 255)
                     {
                         Color blend = _two.color.Blend(_one.color, 0.15d);
