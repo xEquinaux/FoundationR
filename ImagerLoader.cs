@@ -122,6 +122,7 @@ namespace FoundationR
         private static int oldWidth, oldHeight;
         public virtual short BitsPerPixel { get; protected set; }
         internal static byte[] backBuffer;
+        public static Camera Viewport = Foundation.viewport;
         IntPtr hdc;
         public RewBatch(int width, int height, int bitsPerPixel = 32)
         {
@@ -156,13 +157,13 @@ namespace FoundationR
         {
             if (rectangle.X > RewBatch.width) return;
             if (rectangle.Y > RewBatch.height) return;
-            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y);
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y);
         }
         public virtual void Draw(REW image, int x, int y)
         {
             if (x > RewBatch.width)  return;
             if (y > RewBatch.height) return;
-            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x, y);
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x - Viewport.X, y - Viewport.Y);
         }
 
         public virtual void DrawString(string font, string text, Vector2 v2, Color color)

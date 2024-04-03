@@ -22,7 +22,7 @@ namespace FoundationR
         bool flag = true, flag2 = true, init, init2;
         public static int offX, offY;
         public static Rectangle bounds;
-        public static Camera viewport;
+        public static Camera viewport = new Camera();
         protected static RewBatch _rewBatch;
         Stopwatch watch1 = new Stopwatch();
         public static Stopwatch GameTime = new Stopwatch();
@@ -239,6 +239,8 @@ namespace FoundationR
         public Vector2 oldPosition;
         public Vector2 position;
         public Vector2 velocity;
+        public int X => (int)position.X;
+        public int Y => (int)position.Y;
         public virtual bool isMoving => velocity != Vector2.Zero || oldPosition != position;
         public bool follow = false;
         public bool active = false;
