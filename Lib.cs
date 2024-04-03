@@ -1,6 +1,8 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Windows.Threading;
 
 namespace FoundationR
@@ -24,10 +26,6 @@ namespace FoundationR
         public static Rectangle bounds;
         internal static Camera viewport = new Camera();
         protected static RewBatch _rewBatch;
-        Stopwatch watch1 = new Stopwatch();
-        public static Stopwatch GameTime = new Stopwatch();
-        public static TimeSpan DrawTime;
-        public static TimeSpan UpdateTime;
         public static IntPtr HDC;
 
         internal class SurfaceForm : Form
@@ -66,7 +64,6 @@ namespace FoundationR
             t2.SetApartmentState(ApartmentState.STA);
             t.Start();
             t2.Start();
-            GameTime.Start();
             void draw(ref bool taskDone, Surface surface)
             {
                 int width = (int)surface.Width;
@@ -76,8 +73,6 @@ namespace FoundationR
                     if (taskDone)
                     {
                         taskDone = false;
-                        DrawTime = watch1.Elapsed;
-                        watch1.Restart();
                         //window.form?.Invoke(() =>
                         //{
                         //    InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
@@ -112,7 +107,7 @@ namespace FoundationR
             }
             window.form.ShowDialog();
         }
-        bool UpdateLimiter()
+        bool UpdateLimiter(Stopwatch watch1)
         {
             double deltaTime = 0; // Initialize the time accumulator
             double accumulator = 0; // Accumulated time
