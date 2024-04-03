@@ -73,10 +73,16 @@ namespace FoundationR
                     if (taskDone)
                     {
                         taskDone = false;
-                        //window.form?.Invoke(() =>
-                        //{
-                        //    InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
-                        //});
+                        try
+                        {
+                            window.form?.Invoke(() =>
+                            {
+                                InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
+                            });
+                        }
+                        catch 
+                        { }
+                        finally
                         {
                             InternalBegin(window);
                             if ((bool)ResizeEvent?.Invoke())

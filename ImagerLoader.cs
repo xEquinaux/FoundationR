@@ -74,7 +74,7 @@ namespace FoundationR
         {
             byte[] fileSize = BitConverter.GetBytes(image.RealLength);
             byte[] offset = BitConverter.GetBytes(arrayOffset);
-            //  B     M   , Total file size                                   , N/a       , Index offset of where pixel array is
+            //  B     M   , Total file size                                      , N/a       , Index offset of where pixel array is
             return new byte[] { 0x42, 0x4D, fileSize[0], fileSize[1], fileSize[2], fileSize[3], 0, 0, 0, 0, offset[0], offset[1], offset[2], offset[3] };
         }
         public static byte[] Create(REW image)
