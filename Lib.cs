@@ -22,7 +22,7 @@ namespace FoundationR
         bool flag = true, flag2 = true, init, init2;
         public static int offX, offY;
         public static Rectangle bounds;
-        public static Camera viewport = new Camera();
+        internal static Camera viewport = new Camera();
         protected static RewBatch _rewBatch;
         Stopwatch watch1 = new Stopwatch();
         public static Stopwatch GameTime = new Stopwatch();
@@ -78,10 +78,10 @@ namespace FoundationR
                         taskDone = false;
                         DrawTime = watch1.Elapsed;
                         watch1.Restart();
-                        //window.form?.Invoke(() =>
-                        //{
-                        //    InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
-                        //});
+                        window.form?.Invoke(() =>
+                        {
+                            InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
+                        });
                         {
                             InternalBegin(window);
                             if ((bool)ResizeEvent?.Invoke())

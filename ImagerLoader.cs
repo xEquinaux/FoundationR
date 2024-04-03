@@ -155,15 +155,11 @@ namespace FoundationR
         }
         public virtual void Draw(REW image, Rectangle rectangle)
         {
-            if (rectangle.X > RewBatch.width) return;
-            if (rectangle.Y > RewBatch.height) return;
-            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y);
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
         }
         public virtual void Draw(REW image, int x, int y)
         {
-            if (x > RewBatch.width)  return;
-            if (y > RewBatch.height) return;
-            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x - Viewport.X, y - Viewport.Y);
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
         }
 
         public virtual void DrawString(string font, string text, Vector2 v2, Color color)
@@ -236,7 +232,7 @@ namespace FoundationR
             ReleaseDC(IntPtr.Zero, hdc);
             backBuffer = null;
         }
-        public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y, bool text = false)
+        public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y, int origX, int origY, bool text = false)
         {
             Parallel.For(0, imageHeight, i =>
             {
@@ -250,7 +246,23 @@ namespace FoundationR
                     {
                         return;
                     }
-
+                    if (origX + imageWidth < Viewport.X)
+                    {
+                        return;
+                    }
+                    if (origY + imageHeight < Viewport.Y)
+                    {
+                        return;
+                    }
+                    if (origX > Viewport.X + bufferWidth)
+                    {
+                        return;
+                    }    
+                    if (origY > Viewport.Y + bufferHeight)
+                    {
+                        return;
+                    }
+                    
                     int index = Math.Min((i * imageWidth + j) * 4, image.Length - 4);
                     int bufferIndex = ((y + i) * bufferWidth + (x + j)) * 4;
 
