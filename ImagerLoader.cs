@@ -856,14 +856,21 @@ namespace FoundationR
         }
         public static Pixel ReadPixel(this BinaryReader r)
         {
-            Pixel i = new Pixel
-            (
-                r.ReadByte(),
-                r.ReadByte(),
-                r.ReadByte(),
-                r.ReadByte()
-            );
-            return i;
+            try
+            { 
+                Pixel i = new Pixel
+                (
+                    r.ReadByte(),
+                    r.ReadByte(),
+                    r.ReadByte(),
+                    r.ReadByte()
+                );
+                return i;
+            }
+            catch
+            {
+                return new Pixel();
+            }
         }
         public static byte[] color_AppendPixel(this byte[] array, int index, Pixel i)
         {
