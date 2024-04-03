@@ -78,10 +78,10 @@ namespace FoundationR
                         taskDone = false;
                         DrawTime = watch1.Elapsed;
                         watch1.Restart();
-                        window.form?.Invoke(() =>
-                        {
-                            InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
-                        });
+                        //window.form?.Invoke(() =>
+                        //{
+                        //    InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
+                        //});
                         {
                             InternalBegin(window);
                             if ((bool)ResizeEvent?.Invoke())
