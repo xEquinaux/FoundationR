@@ -117,6 +117,8 @@ namespace FoundationR
         static extern int SetDIBitsToDevice(IntPtr hdc, int xDest, int yDest, int w, int h, int xSrc, int ySrc, int startScan, int scanLines, byte[] bits, BitmapInfoHeader bmih, uint colorUse);
         [DllImport("gdi32.dll")]
         static extern IntPtr SelectObject(IntPtr hdc, IntPtr hbdiobj);
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_Init(IntPtr hwnd);
 
         public virtual int stride => width * ((BitsPerPixel + 7) / 8);
         internal static int width, height;
@@ -132,6 +134,7 @@ namespace FoundationR
         }
         void Initialize(int width, int height)
         {
+            Direct2D_Init(IntPtr.Zero);
             RewBatch.width = width;
             RewBatch.height = height;
             backBuffer = new byte[width * height * (BitsPerPixel / 8)];

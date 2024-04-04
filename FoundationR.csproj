@@ -18,11 +18,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="ArrayToBitmap.cpp" />
+    <None Remove="ByteArraySample.cpp" />
+    <None Remove="Direct2D.cpp" />
+    <None Remove="Direct2D.h" />
     <None Remove="FoundationR_1.0.zip" />
+    <None Remove="OpenGL.cpp" />
     <None Remove="REW_Converter.zip" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Direct2D_Render.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Textures\background.rew">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
