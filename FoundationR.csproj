@@ -29,7 +29,7 @@
 
   <ItemGroup>
     <None Update="Direct2D_Render.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Textures\background.rew">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

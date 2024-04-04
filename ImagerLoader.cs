@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data.SqlTypes;
 using System.Diagnostics.Eventing.Reader;
+using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
@@ -118,9 +119,15 @@ namespace FoundationR
         [DllImport("gdi32.dll")]
         static extern IntPtr SelectObject(IntPtr hdc, IntPtr hbdiobj);
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Init(IntPtr hwnd);
+        static extern void Direct2D_Init(IntPtr hwnd, uint width, uint height);
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Render(byte[] buffer, uint width, uint height);
+        static extern void Direct2D_Draw(byte[] buffer, uint x, uint y, uint width, uint height);
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_Begin();
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_End();
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_Dispose();
 
         public virtual int stride => width * ((BitsPerPixel + 7) / 8);
         internal static int width, height;
@@ -128,7 +135,6 @@ namespace FoundationR
         public virtual short BitsPerPixel { get; protected set; }
         internal static byte[] backBuffer;
         public static Camera Viewport = Foundation.viewport;
-        IntPtr hdc;
         public RewBatch(int width, int height, int bitsPerPixel = 32)
         {
             Initialize(width, height);
@@ -136,7 +142,7 @@ namespace FoundationR
         }
         void Initialize(int width, int height)
         {
-            Direct2D_Init(Foundation.HDC);
+            Direct2D_Init(Foundation.HDC, (uint)width, (uint)height);
             RewBatch.width = width;
             RewBatch.height = height;
             backBuffer = new byte[width * height * (BitsPerPixel / 8)];
@@ -150,34 +156,35 @@ namespace FoundationR
                 RewBatch.height = height;
                 RewBatch.oldHeight = height;
                 backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+                Direct2D_Dispose();
+                Direct2D_Init(Foundation.HDC, (uint)width, (uint)height);
                 return true;
             }
             return false;
         }
         public void Begin(IntPtr hdc)
         {
-            backBuffer = new byte[width * height * (BitsPerPixel / 8)];
-            this.hdc = hdc;
+            Direct2D_Begin();
         }
         public virtual void Draw(REW image, Rectangle rectangle)
         {
-            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
+            Direct2D_Draw(image.GetPixels(), (uint)(rectangle.X - Viewport.X), (uint)(rectangle.Y - Viewport.Y), (uint)rectangle.Width, (uint)rectangle.Height);
         }
         public virtual void Draw(REW image, Rectangle rectangle, Color color)
         {
-            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
+            Direct2D_Draw(image.GetPixels().Recolor(color), (uint)(rectangle.X - Viewport.X), (uint)(rectangle.Y - Viewport.Y), (uint)rectangle.Width, (uint)rectangle.Height);
         }
         public virtual void Draw(REW image, int x, int y)
         {
-            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
+            Direct2D_Draw(image.GetPixels(), (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)image.Width, (uint)image.Height);
         }
         public virtual void Draw(REW image, int x, int y, Color color)
         {
-            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
+            Direct2D_Draw(image.GetPixels().Recolor(color), (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)image.Width, (uint)image.Height);
         }
         public virtual void Draw(byte[] image, int x, int y, int width, int height)
         {
-            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image, width, height, x - Viewport.X, y - Viewport.Y, x, y);
+            Direct2D_Draw(image, (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)width, (uint)height);
         }
         
         public virtual void DrawString(string font, string text, Vector2 v2, Color color)
@@ -201,11 +208,11 @@ namespace FoundationR
             {
                 graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
                 Font _font = new Font("Arial", 12);
-                SolidBrush brush = new SolidBrush(color);
+                SolidBrush brush = new SolidBrush(Color.White);
                 PointF point = new PointF(0, 0);
                 graphics.DrawString(text, _font, brush, point);
 
-                Draw(REW.Extract(image, 32), rectangle.X, rectangle.Y);
+                Draw(REW.Extract(image, 32), rectangle.X, rectangle.Y, color);
             }
         }
         public virtual void DrawString(string font, string text, int x, int y, int width, int height, Color color)
@@ -215,42 +222,17 @@ namespace FoundationR
             {
                 graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
                 Font _font = new Font("Arial", 12);
-                SolidBrush brush = new SolidBrush(color);
+                SolidBrush brush = new SolidBrush(Color.White);
                 PointF point = new PointF(0, 0);
                 graphics.DrawString(text, _font, brush, point);
 
-                Draw(REW.Extract(image, 32), x, y);
+                Draw(REW.Extract(image, 32), x, y, color);
             }
         }
 
         public void End()
         {
-            Direct2D_Render(FlipVertically(backBuffer, RewBatch.width, RewBatch.height), (uint)RewBatch.width, (uint)RewBatch.height);
-            return;
-            BitmapInfoHeader bmih = new BitmapInfoHeader()
-            {
-                Size = 40,
-                Width = RewBatch.width,
-                Height = RewBatch.height,
-                Planes = 1,
-                BitCount = 32,
-                Compression = (uint)BitmapCompressionMode.BI_BITFIELDS,
-                SizeImage = (uint)(RewBatch.width * RewBatch.height * (BitsPerPixel / 8)),
-                XPelsPerMeter = 96,
-                YPelsPerMeter = 96,
-                RedMask = 0x00FF0000,
-                GreenMask = 0x0000FF00,
-                BlueMask = 0x000000FF,
-                AlphaMask = 0xFF000000,
-                CSType = BitConverter.ToUInt32(new byte[] { 32, 110, 106, 87 }, 0)
-            };
-            GCHandle h = GCHandle.Alloc(bmih, GCHandleType.Pinned);
-            GCHandle h2 = GCHandle.Alloc(FlipVertically(backBuffer, RewBatch.width, RewBatch.height), GCHandleType.Pinned);
-            SetDIBitsToDevice(hdc, 0, 0, RewBatch.width, RewBatch.height, 0, 0, 0, RewBatch.height, h2.AddrOfPinnedObject(), h.AddrOfPinnedObject(), 0);
-            h.Free();
-            h2.Free();
-            ReleaseDC(IntPtr.Zero, hdc);
-            backBuffer = null;
+            Direct2D_End();
         }
         public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y, int origX, int origY, bool text = false)
         {

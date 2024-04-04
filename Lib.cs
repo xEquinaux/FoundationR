@@ -186,7 +186,7 @@ namespace FoundationR
 
         private void InternalBegin(Surface window)
         {
-            _rewBatch.Begin(GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
+            _rewBatch.Begin(IntPtr.Zero);//GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
         }
         private void InternalBegin(IntPtr hdc)
         {
