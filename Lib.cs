@@ -56,7 +56,7 @@ namespace FoundationR
             window.form = new SurfaceForm(window);
             _rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
             LoadResourcesEvent?.Invoke();
-            InitializeEvent?.Invoke(new InitializeArgs());
+            InitializeEvent?.Invoke(new InitializeArgs() { form = window.form });
             HDC = FindWindowByCaption(IntPtr.Zero, window.Title);
             Thread t = new Thread(() => draw(ref flag, window));
             Thread t2 = new Thread(() => update(ref flag2));
@@ -85,7 +85,7 @@ namespace FoundationR
                         finally
                         {
                             InternalBegin(window);
-                            if ((bool)ResizeEvent?.Invoke())
+                            if ((bool)ResizeEvent?.Invoke(new ResizeArgs()))
                             {
                                 _rewBatch = new RewBatch(width, height, window.BitsPerPixel);
                             }
@@ -172,8 +172,8 @@ namespace FoundationR
         #region events
         public delegate void Event<T>(T e);
         public delegate void Event();
-        public delegate bool Resize();
-        public static event Resize ResizeEvent;
+        public delegate bool Resize<T>(T e);
+        public static event Resize<ResizeArgs> ResizeEvent;
         public static event Event<InitializeArgs> InitializeEvent;
         public static event Event<InputArgs> InputEvent;
         public static event Event LoadResourcesEvent;
@@ -187,7 +187,6 @@ namespace FoundationR
         }
         public class ResizeArgs : IArgs
         {
-            public Surface window;
         }
         public class DrawingArgs : IArgs
         {
@@ -210,6 +209,7 @@ namespace FoundationR
         }
         public class InitializeArgs : IArgs
         {
+            public Form form;
         }
         public class InputArgs : IArgs
         {

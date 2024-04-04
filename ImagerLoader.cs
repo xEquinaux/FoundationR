@@ -158,15 +158,23 @@ namespace FoundationR
         {
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
         }
+        public virtual void Draw(REW image, Rectangle rectangle, Color color)
+        {
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
+        }
         public virtual void Draw(REW image, int x, int y)
         {
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
+        }
+        public virtual void Draw(REW image, int x, int y, Color color)
+        {
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
         }
         public virtual void Draw(byte[] image, int x, int y, int width, int height)
         {
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image, width, height, x - Viewport.X, y - Viewport.Y, x, y);
         }
-
+        
         public virtual void DrawString(string font, string text, Vector2 v2, Color color)
         {
             Bitmap image = new Bitmap(width, height);
@@ -1097,6 +1105,17 @@ namespace FoundationR
             br.Dispose();
             fs.Dispose();
             return result;
+        }
+        public static byte[] Recolor(this byte[] array, Color color)
+        {
+            for (int i = 0; i < array.Length - 4; i += 4)
+            {
+                array[i] = (byte)(array[i] * color.B / 255);
+                array[i + 1] = (byte)(array[i + 1] * color.G / 255);
+                array[i + 2] = (byte)(array[i + 2] * color.R / 255);
+                array[i + 3] = array[i + 3];
+            }
+            return array;
         }
     }
     public class Composite
