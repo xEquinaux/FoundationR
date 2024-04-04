@@ -60,7 +60,6 @@ namespace FoundationR
             HDC = FindWindowByCaption(IntPtr.Zero, window.Title);
             Thread t = new Thread(() => Loop(ref running));
             Thread t2 = new Thread(() => draw(ref flag, window));
-            //Thread t2 = new Thread(() => update(ref flag2));
             t.SetApartmentState(ApartmentState.STA);
             t2.SetApartmentState(ApartmentState.STA);
             t.Start();
@@ -69,36 +68,29 @@ namespace FoundationR
             void Loop(ref bool running)
             { 
                 watch.Start();
-                double deltaTime = 0; // Initialize the time accumulator
-                double accumulator = 0; // Accumulated time
-                double targetFrameTime = 1.0 / 120.0; // Target frame time (1/120 seconds)
+                double deltaTime = 0;
+                double accumulator = 0;
+                double targetFrameTime = 1.0 / 120.0;
                 double oldTime = 0;
 
                 while (running)
                 {
-                    double currentTime = watch.Elapsed.TotalSeconds;//GetCurrentTime(); // Get current time
+                    double currentTime = watch.Elapsed.TotalSeconds;
                     watch.Restart();
-                    deltaTime = currentTime - oldTime; // Calculate time since last frame
-                    oldTime = currentTime; // Update old time
+                    deltaTime = currentTime - oldTime;
+                    oldTime = currentTime;
 
-                    accumulator += deltaTime; // Accumulate time
+                    accumulator += deltaTime;
 
                     if (accumulator < 0)
                     {
                         accumulator = 0d;
                     }
-                    // Update when the accumulated time exceeds the target frame time
                     while (accumulator >= targetFrameTime)
                     {
                         update(ref flag2);
-                        //UpdateGameLogic(); // Your game update logic
-                        accumulator -= targetFrameTime; // Subtract the frame time
+                        accumulator -= targetFrameTime;
                     }
-
-                    //draw(ref flag, window);
-
-                    //Render(); // Render the frame
-                    //Display(); // Display the frame
                 }
             }
 
