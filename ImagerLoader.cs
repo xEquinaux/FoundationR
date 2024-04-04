@@ -200,7 +200,7 @@ namespace FoundationR
                 SolidBrush brush = new SolidBrush(color);
                 PointF point = new PointF(0, 0);
                 graphics.DrawString(text, _font, brush, point);
-                
+
                 Draw(REW.Extract(image, 32), x, y);
             }
         }
@@ -257,12 +257,12 @@ namespace FoundationR
                     if (origX > Viewport.X + bufferWidth)
                     {
                         return;
-                    }    
+                    }
                     if (origY > Viewport.Y + bufferHeight)
                     {
                         return;
                     }
-                    
+
                     int index = Math.Min((i * imageWidth + j) * 4, image.Length - 4);
                     int bufferIndex = ((y + i) * bufferWidth + (x + j)) * 4;
 
@@ -302,7 +302,7 @@ namespace FoundationR
                     }
                 }
             });
-        }                                         
+        }
         public byte[] FlipVertically(byte[] pixels, int width, int height)
         {
             int bytesPerPixel = 4;
@@ -728,6 +728,14 @@ namespace FoundationR
                 data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset + 2)] = color.B;
             }
         }
+        public virtual byte[] Animate(int j, int width, int height)
+        {
+            int len = width * height * 4;
+            byte[] bytes = new byte[len];
+            byte[] original = GetPixels();
+            Buffer.BlockCopy(original, j * width, bytes, 0, len);
+            return bytes;
+        }
     }
     public class Pixel
     {
@@ -857,7 +865,7 @@ namespace FoundationR
         public static Pixel ReadPixel(this BinaryReader r)
         {
             try
-            { 
+            {
                 Pixel i = new Pixel
                 (
                     r.ReadByte(),

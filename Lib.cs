@@ -80,7 +80,7 @@ namespace FoundationR
                                 InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
                             });
                         }
-                        catch 
+                        catch
                         { }
                         finally
                         {
