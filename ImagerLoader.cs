@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data.SqlTypes;
 using System.Diagnostics.Eventing.Reader;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -160,6 +161,10 @@ namespace FoundationR
         public virtual void Draw(REW image, int x, int y)
         {
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
+        }
+        public virtual void Draw(byte[] image, int x, int y, int width, int height)
+        {
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image, width, height, x - Viewport.X, y - Viewport.Y, x, y);
         }
 
         public virtual void DrawString(string font, string text, Vector2 v2, Color color)
@@ -494,6 +499,7 @@ namespace FoundationR
     public partial class REW
     {
         public byte[] data;
+        public int frameCount;
         public virtual int HeaderOffset => 10;
         public virtual short Width { get; protected set; }
         public virtual short Height { get; protected set; }
@@ -519,6 +525,10 @@ namespace FoundationR
             return new REW(width, height, bpp);
         }
         public REW() { }
+        public REW(int frameCount)
+        {
+            this.frameCount = frameCount;
+        }
         private REW(int width, int height, short bpp)
         {
             this.BitsPerPixel = bpp;
@@ -728,12 +738,15 @@ namespace FoundationR
                 data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset + 2)] = color.B;
             }
         }
-        public virtual byte[] Animate(int j, int width, int height)
+        public virtual byte[] Animate(int frame, int frameHeight, int width)
         {
-            int len = width * height * 4;
+            int len = width * frameHeight * 4;
             byte[] bytes = new byte[len];
             byte[] original = GetPixels();
-            Buffer.BlockCopy(original, j * width, bytes, 0, len);
+            int x = 0;
+            int y = frame * frameHeight * 4;
+            int offset = Math.Min(y * width + x, Math.Abs(bytes.Length - original.Length) - 10);
+            Array.Copy(original, offset, bytes, 0, len);
             return bytes;
         }
     }
