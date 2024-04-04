@@ -21,12 +21,13 @@ namespace FoundationR
         static extern IntPtr GetWindowDC(IntPtr hWnd);
 
 
-        bool flag = true, flag2 = true, init, init2;
+        bool flag = true, flag2 = true, init, init2, running = true;
         public static int offX, offY;
         public static Rectangle bounds;
         internal static Camera viewport = new Camera();
         protected static RewBatch _rewBatch;
         public static IntPtr HDC;
+        public Stopwatch watch = new Stopwatch();
 
         internal class SurfaceForm : Form
         {
@@ -49,7 +50,6 @@ namespace FoundationR
         public virtual void RegisterHooks()
         {
         }
-        [STAThread]
         internal void Run(Surface window)
         {
             this.RegisterHooks();
@@ -58,18 +58,56 @@ namespace FoundationR
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs() { form = window.form });
             HDC = FindWindowByCaption(IntPtr.Zero, window.Title);
-            Thread t = new Thread(() => draw(ref flag, window));
-            Thread t2 = new Thread(() => update(ref flag2));
+            Thread t = new Thread(() => Loop(ref running));
+            Thread t2 = new Thread(() => draw(ref flag, window));
+            //Thread t2 = new Thread(() => update(ref flag2));
             t.SetApartmentState(ApartmentState.STA);
             t2.SetApartmentState(ApartmentState.STA);
             t.Start();
             t2.Start();
+
+            void Loop(ref bool running)
+            { 
+                watch.Start();
+                double deltaTime = 0; // Initialize the time accumulator
+                double accumulator = 0; // Accumulated time
+                double targetFrameTime = 1.0 / 120.0; // Target frame time (1/120 seconds)
+                double oldTime = 0;
+
+                while (running)
+                {
+                    double currentTime = watch.Elapsed.TotalSeconds;//GetCurrentTime(); // Get current time
+                    watch.Restart();
+                    deltaTime = currentTime - oldTime; // Calculate time since last frame
+                    oldTime = currentTime; // Update old time
+
+                    accumulator += deltaTime; // Accumulate time
+
+                    if (accumulator < 0)
+                    {
+                        accumulator = 0d;
+                    }
+                    // Update when the accumulated time exceeds the target frame time
+                    while (accumulator >= targetFrameTime)
+                    {
+                        update(ref flag2);
+                        //UpdateGameLogic(); // Your game update logic
+                        accumulator -= targetFrameTime; // Subtract the frame time
+                    }
+
+                    //draw(ref flag, window);
+
+                    //Render(); // Render the frame
+                    //Display(); // Display the frame
+                }
+            }
+
             void draw(ref bool taskDone, Surface surface)
             {
                 int width = (int)surface.Width;
                 int height = (int)surface.Height;
-                while (true)
-                {
+                while (running)
+                { 
                     if (taskDone)
                     {
                         taskDone = false;
@@ -101,14 +139,11 @@ namespace FoundationR
             }
             void update(ref bool taskDone)
             {
-                while (true)
+                if (taskDone)
                 {
-                    if (taskDone)
-                    {
-                        taskDone = false;
-                        UpdateEvent?.Invoke(new UpdateArgs());
-                        taskDone = true;
-                    }
+                    taskDone = false;
+                    UpdateEvent?.Invoke(new UpdateArgs());
+                    taskDone = true;
                 }
             }
             window.form.ShowDialog();

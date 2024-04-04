@@ -1110,10 +1110,10 @@ namespace FoundationR
         {
             for (int i = 0; i < array.Length - 4; i += 4)
             {
-                array[i] = (byte)(array[i] * color.B / 255);
-                array[i + 1] = (byte)(array[i + 1] * color.G / 255);
-                array[i + 2] = (byte)(array[i + 2] * color.R / 255);
-                array[i + 3] = array[i + 3];
+                //array[i] = (byte)(array[i] * color.A / 255);
+                array[i + 1] = (byte)(array[i + 1] * color.R / 255);
+                array[i + 2] = (byte)(array[i + 2] * color.G / 255);
+                array[i + 3] = (byte)(array[i + 3] * color.B / 255);
             }
             return array;
         }
