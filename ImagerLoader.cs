@@ -119,6 +119,8 @@ namespace FoundationR
         static extern IntPtr SelectObject(IntPtr hdc, IntPtr hbdiobj);
         [DllImport(".\\Direct2D_Render.dll")]
         static extern void Direct2D_Init(IntPtr hwnd);
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_Render(byte[] buffer, uint width, uint height);
 
         public virtual int stride => width * ((BitsPerPixel + 7) / 8);
         internal static int width, height;
@@ -134,7 +136,7 @@ namespace FoundationR
         }
         void Initialize(int width, int height)
         {
-            Direct2D_Init(IntPtr.Zero);
+            Direct2D_Init(Foundation.HDC);
             RewBatch.width = width;
             RewBatch.height = height;
             backBuffer = new byte[width * height * (BitsPerPixel / 8)];
@@ -223,6 +225,8 @@ namespace FoundationR
 
         public void End()
         {
+            Direct2D_Render(FlipVertically(backBuffer, RewBatch.width, RewBatch.height), (uint)RewBatch.width, (uint)RewBatch.height);
+            return;
             BitmapInfoHeader bmih = new BitmapInfoHeader()
             {
                 Size = 40,

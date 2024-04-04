@@ -54,10 +54,10 @@ namespace FoundationR
         {
             this.RegisterHooks();
             window.form = new SurfaceForm(window);
+            HDC = window.form.Handle;
             _rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs() { form = window.form });
-            HDC = FindWindowByCaption(IntPtr.Zero, window.Title);
             Thread t = new Thread(() => Loop(ref running));
             Thread t2 = new Thread(() => draw(ref flag, window));
             t.SetApartmentState(ApartmentState.STA);
