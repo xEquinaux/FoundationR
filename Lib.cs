@@ -60,11 +60,11 @@ namespace FoundationR
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs() { form = window.form });
             Thread t = new Thread(() => Loop(ref running));
-            Thread t2 = new Thread(() => draw(ref flag, window));
+            //Thread t2 = new Thread(() => draw(ref flag, window));
             t.SetApartmentState(ApartmentState.STA);
-            t2.SetApartmentState(ApartmentState.STA);
+            //t2.SetApartmentState(ApartmentState.STA);
             t.Start();
-            t2.Start();
+            //t2.Start();
 
             void Loop(ref bool running)
             {
