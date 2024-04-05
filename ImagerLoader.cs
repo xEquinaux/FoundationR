@@ -13,11 +13,14 @@ using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using static System.Net.Mime.MediaTypeNames;
 using Color = System.Drawing.Color;
 using MessageBox = System.Windows.Forms.MessageBox;
 using MessageBoxButtons = System.Windows.Forms.MessageBoxButtons;
+using Path = System.IO.Path;
 using PixelFormat = System.Windows.Media.PixelFormat;
+using Rectangle = System.Drawing.Rectangle;
 
 namespace FoundationR
 {
@@ -145,7 +148,7 @@ namespace FoundationR
             Direct2D_Init(Foundation.HDC, (uint)width, (uint)height);
             RewBatch.width = width;
             RewBatch.height = height;
-            backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+            //backBuffer = new byte[width * height * (BitsPerPixel / 8)];
         }
         public bool Resize(int width, int height)
         {
@@ -155,7 +158,7 @@ namespace FoundationR
                 RewBatch.oldWidth = width;
                 RewBatch.height = height;
                 RewBatch.oldHeight = height;
-                backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+                //backBuffer = new byte[width * height * (BitsPerPixel / 8)];
                 Direct2D_Dispose();
                 Direct2D_Init(Foundation.HDC, (uint)width, (uint)height);
                 return true;
@@ -164,28 +167,63 @@ namespace FoundationR
         }
         public void Begin(IntPtr hdc)
         {
+            //backBuffer = new byte[width * height * (BitsPerPixel / 8)];
             Direct2D_Begin();
         }
+        #region CPU compositing
+/*      public virtual void Draw(REW image, Rectangle rectangle)
+        {
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
+        }
+        public virtual void Draw(REW image, Rectangle rectangle, Color color)
+        {
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
+        }
+        public virtual void Draw(REW image, int x, int y)
+        {
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
+        }
+        public virtual void Draw(REW image, int x, int y, Color color)
+        {
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
+        }
+        public virtual void Draw(byte[] image, int x, int y, int width, int height)
+        {
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image, width, height, x - Viewport.X, y - Viewport.Y, x, y);
+        }*/
+        #endregion
+        #region Direct2D Draw
         public virtual void Draw(REW image, Rectangle rectangle)
         {
+            if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
+                return;
             Direct2D_Draw(image.GetPixels(), (uint)(rectangle.X - Viewport.X), (uint)(rectangle.Y - Viewport.Y), (uint)rectangle.Width, (uint)rectangle.Height);
         }
         public virtual void Draw(REW image, Rectangle rectangle, Color color)
         {
+            if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
+                return;
             Direct2D_Draw(image.GetPixels().Recolor(color), (uint)(rectangle.X - Viewport.X), (uint)(rectangle.Y - Viewport.Y), (uint)rectangle.Width, (uint)rectangle.Height);
         }
         public virtual void Draw(REW image, int x, int y)
         {
+            if (Culling(image.Width, image.Height, x, y))
+                return;
             Direct2D_Draw(image.GetPixels(), (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)image.Width, (uint)image.Height);
         }
         public virtual void Draw(REW image, int x, int y, Color color)
         {
+            if (Culling(image.Width, image.Height, x, y))
+                return;
             Direct2D_Draw(image.GetPixels().Recolor(color), (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)image.Width, (uint)image.Height);
         }
         public virtual void Draw(byte[] image, int x, int y, int width, int height)
         {
+            if (Culling(width, height, x, y))
+                return;
             Direct2D_Draw(image, (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)width, (uint)height);
         }
+        #endregion
         
         public virtual void DrawString(string font, string text, Vector2 v2, Color color)
         {
@@ -233,6 +271,27 @@ namespace FoundationR
         public void End()
         {
             Direct2D_End();
+            //backBuffer = null;
+        }
+        bool Culling(int imageWidth, int imageHeight, int origX, int origY)
+        {
+            if (origX + imageWidth < Viewport.X)
+            {
+                return true;
+            }
+            if (origY + imageHeight < Viewport.Y)
+            {
+                return true;
+            }
+            if (origX > Viewport.X + RewBatch.width)
+            {
+                return true;
+            }
+            if (origY > Viewport.Y + RewBatch.height)
+            {
+                return true;
+            }
+            return false;
         }
         public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y, int origX, int origY, bool text = false)
         {
@@ -910,17 +969,17 @@ namespace FoundationR
         public static byte[] AppendPixel(this byte[] array, int index, Pixel i)
         {
             if (i.hasAlpha)
-            {
-                array[index + 3] = i.A;
-                array[index + 2] = i.R;
-                array[index + 1] = i.G;
-                array[index] = i.B;
+            {                           // CPU compositing requires:
+                array[index] = i.A;     // B, 
+                array[index + 1] = i.R; // G, 
+                array[index + 2] = i.G; // R, 
+                array[index + 3] = i.B; // A
             }
             else
             {
-                array[index + 2] = i.R;
+                array[index] = i.R;
                 array[index + 1] = i.G;
-                array[index] = i.B;
+                array[index + 2] = i.B;
             }
             return array;
         }
