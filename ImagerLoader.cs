@@ -122,18 +122,16 @@ namespace FoundationR
         [DllImport("gdi32.dll")]
         static extern IntPtr SelectObject(IntPtr hdc, IntPtr hbdiobj);
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Init(IntPtr hwnd, uint width, uint height);
+        static extern void Direct3D_Init(IntPtr hwnd, uint width, uint height);
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Draw(byte[] buffer, uint x, uint y, uint width, uint height);
+        static extern void Direct3D_Draw(byte[] buffer, uint x, uint y, uint width, uint height);
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Begin();
+        static extern void Direct3D_Begin();
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_End();
+        static extern void Direct3D_End();
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Dispose();
-        [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Translate(float x, float y);
-
+        static extern void Dispose();
+        
         public virtual int stride => width * ((BitsPerPixel + 7) / 8);
         internal static int width, height;
         private static int oldWidth, oldHeight;
