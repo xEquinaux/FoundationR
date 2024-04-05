@@ -128,6 +128,12 @@ namespace FoundationR
         [DllImport(".\\Direct2D_Render.dll")]
         static extern void Direct3D_Draw(byte[] buffer, uint x, uint y, uint width, uint height);
         [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_Draw(byte[] buffer, uint x, uint y, uint width, uint height);
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_Begin();
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_End();
+        [DllImport(".\\Direct2D_Render.dll")]
         static extern void Direct3D_Render();
         [DllImport(".\\Direct2D_Render.dll")]
         static extern void Dispose();
@@ -169,6 +175,7 @@ namespace FoundationR
         }
         public void Begin(IntPtr hdc)
         {
+            Direct2D_Begin();
             //backBuffer = new byte[width * height * (BitsPerPixel / 8)];
         }
         #region CPU compositing
@@ -196,75 +203,27 @@ namespace FoundationR
         #region Direct2D Draw
         public virtual void Draw(REW image, Rectangle rectangle)
         {
-            if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
-                return;
-            if (rectangle.Width + rectangle.X > RewBatch.width)
-            {
-                rectangle.Width = rectangle.Width + rectangle.X - RewBatch.width;
-            }
-            if (rectangle.Height + rectangle.Y > RewBatch.height)
-            {
-                rectangle.Height = rectangle.Height + rectangle.Y - RewBatch.height;
-            }
-            Direct3D_Draw(image.GetPixels(), (uint)(rectangle.X - Viewport.X), (uint)(rectangle.Y - Viewport.Y), (uint)rectangle.Width, (uint)rectangle.Height);
+            Direct2D_Draw(image.GetPixels(), (uint)(rectangle.X - Viewport.X), (uint)(rectangle.Y - Viewport.Y), (uint)rectangle.Width, (uint)rectangle.Height);
         }
         public virtual void Draw(REW image, Rectangle rectangle, Color color)
         {
-            if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
-                return;
-            if (rectangle.Width + rectangle.X > RewBatch.width)
-            {
-                rectangle.Width = rectangle.Width + rectangle.X - RewBatch.width;
-            }
-            if (rectangle.Height + rectangle.Y > RewBatch.height)
-            {
-                rectangle.Height = rectangle.Height + rectangle.Y - RewBatch.height;
-            }
-            Direct3D_Draw(image.GetPixels().Recolor(color), (uint)(rectangle.X - Viewport.X), (uint)(rectangle.Y - Viewport.Y), (uint)rectangle.Width, (uint)rectangle.Height);
+            Direct2D_Draw(image.GetPixels().Recolor(color), (uint)(rectangle.X - Viewport.X), (uint)(rectangle.Y - Viewport.Y), (uint)rectangle.Width, (uint)rectangle.Height);
         }
         public virtual void Draw(REW image, int x, int y)
         {
-            if (Culling(image.Width, image.Height, x, y))
-                return;
-            int w = image.Width, h = image.Height;
-            if (image.Width + x > RewBatch.width)
-            {
-                w = image.Width + x - RewBatch.width;
-            }
-            if (image.Height + y > RewBatch.height)
-            {
-                h = image.Height + y - RewBatch.height;
-            }
-            Direct3D_Draw(image.GetPixels(), (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)w, (uint)h);
+            int w = image.Width;
+            int h = image.Height;
+            Direct2D_Draw(image.GetPixels(), (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)w, (uint)h);
         }
         public virtual void Draw(REW image, int x, int y, Color color)
         {
-            if (Culling(image.Width, image.Height, x, y))
-                return;
-            int w = image.Width, h = image.Height;
-            if (image.Width + x > RewBatch.width)
-            {
-                w = image.Width + x - RewBatch.width;
-            }
-            if (image.Height + y > RewBatch.height)
-            {
-                h = image.Height + y - RewBatch.height;
-            }
-            Direct3D_Draw(image.GetPixels().Recolor(color), (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)w, (uint)h);
+            int w = image.Width;
+            int h = image.Height; 
+            Direct2D_Draw(image.GetPixels().Recolor(color), (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)w, (uint)h);
         }
         public virtual void Draw(byte[] image, int x, int y, int width, int height)
         {
-            if (Culling(width, height, x, y))
-                return;
-            if (width + x > RewBatch.width)
-            {
-                width = width + x - RewBatch.width;
-            }
-            if (height + y > RewBatch.height)
-            {
-                height = height + y - RewBatch.height;
-            }
-            Direct3D_Draw(image, (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)width, (uint)height);
+            Direct2D_Draw(image, (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)width, (uint)height);
         }
         #endregion
         
@@ -313,7 +272,8 @@ namespace FoundationR
 
         public void End()
         {
-            //Direct3D_End();
+            //Direct3D_Render();
+            Direct2D_End();
             //backBuffer = null;
         }
         bool Culling(int imageWidth, int imageHeight, int origX, int origY)
