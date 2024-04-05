@@ -131,6 +131,8 @@ namespace FoundationR
         static extern void Direct2D_End();
         [DllImport(".\\Direct2D_Render.dll")]
         static extern void Direct2D_Dispose();
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_Translate(float x, float y);
 
         public virtual int stride => width * ((BitsPerPixel + 7) / 8);
         internal static int width, height;
@@ -169,6 +171,7 @@ namespace FoundationR
         {
             //backBuffer = new byte[width * height * (BitsPerPixel / 8)];
             Direct2D_Begin();
+            Direct2D_Translate(Viewport.X, Viewport.Y);
         }
         #region CPU compositing
 /*      public virtual void Draw(REW image, Rectangle rectangle)

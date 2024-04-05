@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -66,7 +67,7 @@ namespace FoundationR
             t2.Start();
 
             void Loop(ref bool running)
-            { 
+            {
                 watch.Start();
                 double deltaTime = 0;
                 double accumulator = 0;
@@ -91,6 +92,8 @@ namespace FoundationR
                         update(ref flag2);
                         accumulator -= targetFrameTime;
                     }
+
+                    draw(ref flag, window);
                 }
             }
 
@@ -98,35 +101,32 @@ namespace FoundationR
             {
                 int width = (int)surface.Width;
                 int height = (int)surface.Height;
-                while (running)
-                { 
-                    if (taskDone)
+                if (taskDone)
+                {
+                    taskDone = false;
+                    try
                     {
-                        taskDone = false;
-                        try
+                        window.form?.Invoke(() =>
                         {
-                            window.form?.Invoke(() =>
-                            {
-                                InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
-                            });
-                        }
-                        catch
-                        { }
-                        finally
-                        {
-                            InternalBegin(window);
-                            if ((bool)ResizeEvent?.Invoke(new ResizeArgs()))
-                            {
-                                _rewBatch = new RewBatch(width, height, window.BitsPerPixel);
-                            }
-                            MainMenuEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
-                            PreDrawEvent?.Invoke(new PreDrawArgs() { rewBatch = _rewBatch });
-                            DrawEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
-                            CameraEvent?.Invoke(new CameraArgs() { rewBatch = _rewBatch, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
-                            InternalEnd();
-                        }
-                        taskDone = true;
+                            InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
+                        });
                     }
+                    catch
+                    { }
+                    finally
+                    {
+                        InternalBegin(window);
+                        if ((bool)ResizeEvent?.Invoke(new ResizeArgs()))
+                        {
+                            _rewBatch = new RewBatch(width, height, window.BitsPerPixel);
+                        }
+                        MainMenuEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
+                        PreDrawEvent?.Invoke(new PreDrawArgs() { rewBatch = _rewBatch });
+                        DrawEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
+                        CameraEvent?.Invoke(new CameraArgs() { rewBatch = _rewBatch, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
+                        InternalEnd();
+                    }
+                    taskDone = true;
                 }
             }
             void update(ref bool taskDone)
