@@ -60,11 +60,11 @@ namespace FoundationR
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs() { form = window.form });
             Thread t = new Thread(() => Loop(ref running));
-            //Thread t2 = new Thread(() => draw(ref flag, window));
+            Thread t2 = new Thread(() => draw(ref flag, window));
             t.SetApartmentState(ApartmentState.STA);
-            //t2.SetApartmentState(ApartmentState.STA);
+            t2.SetApartmentState(ApartmentState.STA);
             t.Start();
-            //t2.Start();
+            t2.Start();
 
             void Loop(ref bool running)
             {
@@ -93,7 +93,7 @@ namespace FoundationR
                         accumulator -= targetFrameTime;
                     }
 
-                    draw(ref flag, window);
+                    //draw(ref flag, window);
                 }
             }
 
@@ -101,32 +101,35 @@ namespace FoundationR
             {
                 int width = (int)surface.Width;
                 int height = (int)surface.Height;
-                if (taskDone)
-                {
-                    taskDone = false;
-                    try
+                while (running)
+                { 
+                    if (taskDone)
                     {
-                        window.form?.Invoke(() =>
+                        taskDone = false;
+                        try
                         {
-                            InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
-                        });
-                    }
-                    catch
-                    { }
-                    finally
-                    {
-                        InternalBegin(window);
-                        if ((bool)ResizeEvent?.Invoke(new ResizeArgs()))
-                        {
-                            _rewBatch = new RewBatch(width, height, window.BitsPerPixel);
+                            window.form?.Invoke(() =>
+                            {
+                                InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
+                            });
                         }
-                        MainMenuEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
-                        PreDrawEvent?.Invoke(new PreDrawArgs() { rewBatch = _rewBatch });
-                        DrawEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
-                        CameraEvent?.Invoke(new CameraArgs() { rewBatch = _rewBatch, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
-                        InternalEnd();
+                        catch
+                        { }
+                        finally
+                        {
+                            InternalBegin(window);
+                            if ((bool)ResizeEvent?.Invoke(new ResizeArgs()))
+                            {
+                                _rewBatch = new RewBatch(width, height, window.BitsPerPixel);
+                            }
+                            MainMenuEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
+                            PreDrawEvent?.Invoke(new PreDrawArgs() { rewBatch = _rewBatch });
+                            DrawEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
+                            CameraEvent?.Invoke(new CameraArgs() { rewBatch = _rewBatch, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
+                            InternalEnd();
+                        }
+                        taskDone = true;
                     }
-                    taskDone = true;
                 }
             }
             void update(ref bool taskDone)
@@ -267,6 +270,9 @@ namespace FoundationR
         public Vector2 oldPosition;
         public Vector2 position;
         public Vector2 velocity;
+        public Rectangle bounds;
+        public int Width => bounds.Width;
+        public int Height => bounds.Height;
         public int X => (int)position.X;
         public int Y => (int)position.Y;
         public virtual bool isMoving => velocity != Vector2.Zero || oldPosition != position;

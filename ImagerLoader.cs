@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Security.Policy;
 using System.Text;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -124,17 +125,11 @@ namespace FoundationR
         [DllImport(".\\Direct2D_Render.dll")]
         static extern void Direct2D_Init(IntPtr hwnd, uint width, uint height);
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct3D_Init(byte[] buffer, uint width, uint height);
-        [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct3D_Draw(byte[] buffer, uint x, uint y, uint width, uint height);
-        [DllImport(".\\Direct2D_Render.dll")]
         static extern void Direct2D_Draw(byte[] buffer, uint x, uint y, uint width, uint height);
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Begin();
+        static extern void Direct2D_Begin(uint viewX, uint viewY);
         [DllImport(".\\Direct2D_Render.dll")]
         static extern void Direct2D_End();
-        [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Render();
         [DllImport(".\\Direct2D_Render.dll")]
         static extern void Dispose();
         
@@ -143,7 +138,11 @@ namespace FoundationR
         private static int oldWidth, oldHeight;
         public virtual short BitsPerPixel { get; protected set; }
         internal static byte[] backBuffer;
-        public static Camera Viewport = Foundation.viewport;
+        public static Camera Viewport
+        { 
+            get { return Foundation.viewport; }
+            set { Foundation.viewport = value; }
+        }
         public RewBatch(int width, int height, int bitsPerPixel = 32)
         {
             Initialize(width, height);
@@ -151,8 +150,8 @@ namespace FoundationR
         }
         void Initialize(int width, int height)
         {
+            Viewport.bounds = new Rectangle(0, 0, width, height);
             Direct2D_Init(Foundation.HDC, (uint)width, (uint)height);
-            //Direct3D_Init(new byte[width * height * 4], (uint)width, (uint)height);
             RewBatch.width = width;
             RewBatch.height = height;
             //backBuffer = new byte[width * height * (BitsPerPixel / 8)];
@@ -168,37 +167,46 @@ namespace FoundationR
                 //backBuffer = new byte[width * height * (BitsPerPixel / 8)];
                 Dispose();
                 Direct2D_Init(Foundation.HDC, (uint)width, (uint)height);
-                //Direct3D_Init(new byte[width * height * 4], (uint)width, (uint)height);
                 return true;
             }
             return false;
         }
         public void Begin(IntPtr hdc)
         {
-            Direct2D_Begin();
+            Direct2D_Begin((uint)Viewport.X, (uint)Viewport.Y);
             //backBuffer = new byte[width * height * (BitsPerPixel / 8)];
         }
         #region CPU compositing
 /*      public virtual void Draw(REW image, Rectangle rectangle)
         {
+            if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
+                return; 
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
         }
         public virtual void Draw(REW image, Rectangle rectangle, Color color)
         {
+            if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
+                return; 
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
         }
         public virtual void Draw(REW image, int x, int y)
         {
+            if (Culling(image.Width, image.Height, x, y))
+                return;
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
         }
         public virtual void Draw(REW image, int x, int y, Color color)
         {
+            if (Culling(image.Width, image.Height, x, y))
+                return;
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
         }
         public virtual void Draw(byte[] image, int x, int y, int width, int height)
         {
+            if (Culling(width, height, x, y))
+                return;
             CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image, width, height, x - Viewport.X, y - Viewport.Y, x, y);
-        }*/
+        }                     */
         #endregion
         #region Direct2D Draw
         public virtual void Draw(REW image, Rectangle rectangle)
@@ -234,7 +242,7 @@ namespace FoundationR
             if (Culling(width, height, x, y))
                 return;
             Direct2D_Draw(image, (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)width, (uint)height);
-        }
+        }        
         #endregion
         
         public virtual void DrawString(string font, string text, Vector2 v2, Color color)
@@ -282,7 +290,6 @@ namespace FoundationR
 
         public void End()
         {
-            Direct2D_Render();
             Direct2D_End();
             //backBuffer = null;
         }
@@ -296,11 +303,11 @@ namespace FoundationR
             {
                 return true;
             }
-            if (origX > Viewport.X + RewBatch.width)
+            if (origX > Viewport.X + Viewport.Width)
             {
                 return true;
             }
-            if (origY > Viewport.Y + RewBatch.height)
+            if (origY > Viewport.Y + Viewport.Height)
             {
                 return true;
             }
@@ -983,10 +990,10 @@ namespace FoundationR
         {
             if (i.hasAlpha)
             {                           // CPU compositing requires:
-                array[index] = i.A;     // B, 
-                array[index + 1] = i.R; // G, 
-                array[index + 2] = i.G; // R, 
-                array[index + 3] = i.B; // A
+                array[index] = i.B;     // B, 
+                array[index + 1] = i.G; // G, 
+                array[index + 2] = i.R; // R, 
+                array[index + 3] = i.A; // A
             }
             else
             {
