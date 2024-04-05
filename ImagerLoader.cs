@@ -134,7 +134,7 @@ namespace FoundationR
         [DllImport(".\\Direct2D_Render.dll")]
         static extern void Direct2D_End();
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct3D_Render();
+        static extern void Direct2D_Render();
         [DllImport(".\\Direct2D_Render.dll")]
         static extern void Dispose();
         
@@ -152,7 +152,7 @@ namespace FoundationR
         void Initialize(int width, int height)
         {
             Direct2D_Init(Foundation.HDC, (uint)width, (uint)height);
-            Direct3D_Init(new byte[width * height * 4], (uint)width, (uint)height);
+            //Direct3D_Init(new byte[width * height * 4], (uint)width, (uint)height);
             RewBatch.width = width;
             RewBatch.height = height;
             //backBuffer = new byte[width * height * (BitsPerPixel / 8)];
@@ -168,7 +168,7 @@ namespace FoundationR
                 //backBuffer = new byte[width * height * (BitsPerPixel / 8)];
                 Dispose();
                 Direct2D_Init(Foundation.HDC, (uint)width, (uint)height);
-                Direct3D_Init(new byte[width * height * 4], (uint)width, (uint)height);
+                //Direct3D_Init(new byte[width * height * 4], (uint)width, (uint)height);
                 return true;
             }
             return false;
@@ -203,26 +203,36 @@ namespace FoundationR
         #region Direct2D Draw
         public virtual void Draw(REW image, Rectangle rectangle)
         {
+            if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
+                return;
             Direct2D_Draw(image.GetPixels(), (uint)(rectangle.X - Viewport.X), (uint)(rectangle.Y - Viewport.Y), (uint)rectangle.Width, (uint)rectangle.Height);
         }
         public virtual void Draw(REW image, Rectangle rectangle, Color color)
         {
+            if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
+                return;
             Direct2D_Draw(image.GetPixels().Recolor(color), (uint)(rectangle.X - Viewport.X), (uint)(rectangle.Y - Viewport.Y), (uint)rectangle.Width, (uint)rectangle.Height);
         }
         public virtual void Draw(REW image, int x, int y)
         {
+            if (Culling(image.Width, image.Height, x, y))
+                return;
             int w = image.Width;
             int h = image.Height;
             Direct2D_Draw(image.GetPixels(), (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)w, (uint)h);
         }
         public virtual void Draw(REW image, int x, int y, Color color)
         {
+            if (Culling(image.Width, image.Height, x, y))
+                return;
             int w = image.Width;
             int h = image.Height; 
             Direct2D_Draw(image.GetPixels().Recolor(color), (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)w, (uint)h);
         }
         public virtual void Draw(byte[] image, int x, int y, int width, int height)
         {
+            if (Culling(width, height, x, y))
+                return;
             Direct2D_Draw(image, (uint)(x - Viewport.X), (uint)(y - Viewport.Y), (uint)width, (uint)height);
         }
         #endregion
@@ -272,7 +282,7 @@ namespace FoundationR
 
         public void End()
         {
-            //Direct3D_Render();
+            Direct2D_Render();
             Direct2D_End();
             //backBuffer = null;
         }
