@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Windows.Media.Media3D;
 using System.Windows.Threading;
 
 namespace FoundationR
@@ -20,7 +21,12 @@ namespace FoundationR
         static extern IntPtr GetDCEx(IntPtr hWnd, IntPtr hrgnClip, uint flags);
         [DllImport("user32.dll")]
         static extern IntPtr GetWindowDC(IntPtr hWnd);
-
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_ShowWindow();
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_Init(uint width, uint height);
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_InitEx(IntPtr hWnd, uint width, uint height);
 
         bool flag = true, flag2 = true, init, init2, running = true;
         public static int offX, offY;
@@ -48,6 +54,25 @@ namespace FoundationR
             }
         }
 
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr CreateWindowEx(
+            uint dwExStyle,
+            string lpClassName,
+            string lpWindowName,
+            uint dwStyle,
+            int x,
+            int y,
+            int nWidth,
+            int nHeight,
+            IntPtr hWndParent,
+            IntPtr hMenu,
+            IntPtr hInstance,
+            IntPtr lpParam);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
         public virtual void RegisterHooks()
         {
         }
@@ -56,9 +81,23 @@ namespace FoundationR
             this.RegisterHooks();
             window.form = new SurfaceForm(window);
             _rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
-            HWND = FindWindowByCaption(IntPtr.Zero, window.Title);
-            HDC = GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403);
-            Handle = window.form.Handle;
+            
+            if (RewBatch.renderOption == RenderOption.Direct2D || RewBatch.renderOption == RenderOption.Both)
+            {
+                Process proc = Process.Start(".\\TestBed.exe");
+                START:
+                if (proc.MainWindowHandle == IntPtr.Zero)
+                {
+                    Task.WaitAll(Task.Delay(100));
+                    proc.Refresh();
+                    goto START;
+                }
+                Direct2D_InitEx(proc.MainWindowHandle, (uint)window.Width, (uint)window.Height);
+            }
+            else
+            {
+                window.form.ShowDialog();
+            }
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs() { form = window.form });
             Thread t = new Thread(() => Loop(ref running));
@@ -143,7 +182,6 @@ namespace FoundationR
                     taskDone = true;
                 }
             }
-            window.form.ShowDialog();
         }
         bool UpdateLimiter(Stopwatch watch1)
         {

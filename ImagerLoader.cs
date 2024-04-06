@@ -12,6 +12,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
@@ -133,9 +134,12 @@ namespace FoundationR
         [DllImport(".\\Direct2D_Render.dll")]
         static extern void Direct2D_Clear();
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Paint();
+        static extern void Direct2D_Begin();
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_End();
 
-        public static RenderOption renderOption = RenderOption.GDI;
+
+        public static RenderOption renderOption = RenderOption.Direct2D;
         public virtual int stride => width * ((BitsPerPixel + 7) / 8);
         internal static int width, height;
         private static int oldWidth, oldHeight;
@@ -157,7 +161,7 @@ namespace FoundationR
             RewBatch.width = width;
             RewBatch.height = height;
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Init(Foundation.HWND, (uint)width, (uint)height);
+                Direct2D_Init(IntPtr.Zero, (uint)width, (uint)height);
             else 
             if (renderOption == RenderOption.Both)
             {
@@ -175,7 +179,7 @@ namespace FoundationR
                 RewBatch.oldWidth = width;
                 RewBatch.height = height;
                 RewBatch.oldHeight = height;
-                if (renderOption == RenderOption.Direct2D)
+                if (renderOption == RenderOption.Direct2D || renderOption == RenderOption.Both)
                 { 
                     Direct2D_Dispose();
                     Direct2D_Init(Foundation.Handle, (uint)width, (uint)height);
@@ -188,8 +192,9 @@ namespace FoundationR
         }
         public void Begin(IntPtr hdc)
         {
-            if (renderOption == RenderOption.Direct2D)
+            if (renderOption == RenderOption.Direct2D || renderOption == RenderOption.Both)
             { 
+                Direct2D_Begin();
                 Direct2D_Clear(); 
             }
             else
@@ -210,9 +215,9 @@ namespace FoundationR
             if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
                 return;
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Draw(image.GetPixels().Recolor(color), (uint)rectangle.X, (uint)rectangle.Y, (uint)rectangle.Width, (uint)rectangle.Height);
+                Direct2D_Draw(image.GetPixels().Recolor(Convert(color)), (uint)rectangle.X, (uint)rectangle.Y, (uint)rectangle.Width, (uint)rectangle.Height);
             else
-                CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), image.Width, image.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
+                CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(Convert(color)), image.Width, image.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
         }                            
         public virtual void Draw(REW image, int x, int y)
         {
@@ -232,9 +237,9 @@ namespace FoundationR
             int w = image.Width;
             int h = image.Height; 
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Draw(image.GetPixels().Recolor(color), (uint)x, (uint)y, (uint)w, (uint)h);
+                Direct2D_Draw(image.GetPixels().Recolor(Convert(color)), (uint)x, (uint)y, (uint)w, (uint)h);
             else
-                CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
+                CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(Convert(color)), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
         }
         public virtual void Draw(byte[] image, int x, int y, int width, int height)
         {
@@ -288,7 +293,7 @@ namespace FoundationR
                 Draw(REW.Extract(image, 32), x, y, color);
             }
         }
-
+        
         public void End(RenderOption type, IntPtr handle)
         {
             switch (type)
@@ -319,10 +324,11 @@ namespace FoundationR
                     ReleaseDC(IntPtr.Zero, handle);
                     goto default;
                 case RenderOption.Direct2D:
-                    Direct2D_Paint();
+                    Direct2D_End();
                     goto default;
                 case RenderOption.Both:
                     Direct2D_Render(backBuffer, (uint)Viewport.Width, (uint)Viewport.Height);
+                    Direct2D_End();
                     goto default;
                 case RenderOption.None:
                 default:
@@ -332,20 +338,24 @@ namespace FoundationR
         }
         bool Culling(int imageWidth, int imageHeight, int origX, int origY)
         {
-            if (origX + imageWidth < Viewport.X)
+            if (origX + imageWidth <= Viewport.X)
             {
                 return true;
             }
-            if (origY + imageHeight < Viewport.Y)
+            if (origY + imageHeight <= Viewport.Y)
             {
                 return true;
             }
-            if (origX > Viewport.X + Viewport.Width)
+            if (origX >= Viewport.X + Viewport.Width)
             {
                 return true;
             }
-            if (origY > Viewport.Y + Viewport.Height)
+            if (origY >= Viewport.Y + Viewport.Height)
             {
+                return true;
+            }                  
+            if (origX + imageWidth >= Viewport.Width + Viewport.X || origY + imageHeight >= Viewport.Height + Viewport.Y || origX <= 0 || origY <= 0)
+            { 
                 return true;
             }
             return false;
@@ -486,6 +496,16 @@ namespace FoundationR
 
             // Return the output bitmap
             return output;
+        }
+        ARGB Convert(Color color)
+        {
+            return new ARGB()
+            {
+                a = color.A,
+                r = color.R,
+                g = color.G,
+                b = color.B,
+            };
         }
     }
     public static class ImageLoader
@@ -1009,9 +1029,9 @@ namespace FoundationR
                     case RenderOption.None:
                     case RenderOption.Both:
                     case RenderOption.GDI:      // CPU compositing requires:
-                        array[index] = i.R;     // B, 
+                        array[index] = i.B;     // B, 
                         array[index + 1] = i.G; // G, 
-                        array[index + 2] = i.B; // R, 
+                        array[index + 2] = i.R; // R, 
                         array[index + 3] = i.A; // A
                         break;
                     case RenderOption.Direct2D:
@@ -1029,9 +1049,9 @@ namespace FoundationR
                     case RenderOption.None:
                     case RenderOption.Both:
                     case RenderOption.GDI:      // CPU compositing requires:
-                        array[index] = i.B;     // B, 
+                        array[index] = i.R;     // B, 
                         array[index + 1] = i.G; // G, 
-                        array[index + 2] = i.R; // R, 
+                        array[index + 2] = i.B; // R, 
                         break;
                     case RenderOption.Direct2D:
                         array[index] = i.R; // R, 
@@ -1072,10 +1092,10 @@ namespace FoundationR
                     if (_two.A < 255)
                     {
                         Color blend = _two.color.Blend(_one.color, 0.15d);
-                        input[whoAmI] = blend.B;
-                        input[whoAmI + 1] = blend.G;
-                        input[whoAmI + 2] = blend.R;
-                        input[whoAmI + 3] = blend.A;
+                        input[whoAmI] = blend.A;     // B
+                        input[whoAmI + 1] = blend.R; // G
+                        input[whoAmI + 2] = blend.G; // R
+                        input[whoAmI + 3] = blend.B; // A
                     }
                     else
                     {
@@ -1213,17 +1233,6 @@ namespace FoundationR
             fs.Dispose();
             return result;
         }
-        public static byte[] Recolor(this byte[] array, Color color)
-        {
-            for (int i = 0; i < array.Length - 4; i += 4)
-            {
-                //array[i] = (byte)(array[i] * color.A / 255);
-                array[i + 1] = (byte)(array[i + 1] * color.R / 255);
-                array[i + 2] = (byte)(array[i + 2] * color.G / 255);
-                array[i + 3] = (byte)(array[i + 3] * color.B / 255);
-            }
-            return array;
-        }
     }
     public class Composite
     {
@@ -1360,9 +1369,9 @@ namespace FoundationR
     }
     public enum RenderOption : byte
     {
-        GDI = 0,
-        Direct2D = 1,
-        Both = 2,
-        None = 3
+        None = 0,
+        GDI = 1,
+        Direct2D = 2,
+        Both = 3
     }
 }

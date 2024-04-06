@@ -37,6 +37,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="TestBed.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Textures\background.rew">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
