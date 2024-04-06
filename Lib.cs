@@ -92,7 +92,7 @@ namespace FoundationR
                     proc.Refresh();
                     goto START;
                 }
-                Direct2D_InitEx(proc.MainWindowHandle, (uint)window.Width, (uint)window.Height);
+                Direct2D_InitEx(proc.handle, (uint)window.Width, (uint)window.Height);
             }
             else
             {
@@ -147,29 +147,17 @@ namespace FoundationR
                     if (taskDone)
                     {
                         taskDone = false;
-                        try
+                        InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
+                        InternalBegin(window);
+                        if ((bool)ResizeEvent?.Invoke(new ResizeArgs()))
                         {
-                            window.form?.Invoke(() =>
-                            {
-                                InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
-                            });
+                            _rewBatch = new RewBatch(width, height, window.BitsPerPixel);
                         }
-                        catch
-                        { }
-                        finally
-                        {
-                            InternalBegin(window);
-                            if ((bool)ResizeEvent?.Invoke(new ResizeArgs()))
-                            {
-                                _rewBatch = new RewBatch(width, height, window.BitsPerPixel);
-                            }
-                            MainMenuEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
-                            PreDrawEvent?.Invoke(new PreDrawArgs() { rewBatch = _rewBatch });
-                            DrawEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
-                            CameraEvent?.Invoke(new CameraArgs() { rewBatch = _rewBatch, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
-                            InternalEnd(GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
-                        }
-                        taskDone = true;
+                        MainMenuEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
+                        PreDrawEvent?.Invoke(new PreDrawArgs() { rewBatch = _rewBatch });
+                        DrawEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
+                        CameraEvent?.Invoke(new CameraArgs() { rewBatch = _rewBatch, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
+                        InternalEnd(GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
                     }
                 }
             }
