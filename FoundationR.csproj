@@ -23,15 +23,20 @@
     <None Remove="ByteArraySample.cpp" />
     <None Remove="Direct2D.cpp" />
     <None Remove="Direct2D.h" />
+    <None Remove="Direct2D_Render.dll" />
+    <None Remove="FoundationR.zip" />
     <None Remove="FoundationR_1.0.zip" />
     <None Remove="OpenGL.cpp" />
     <None Remove="REW_Converter.zip" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Direct2D_Render.dll">
+    <Content Include="Direct2D_Render.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="Textures\background.rew">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

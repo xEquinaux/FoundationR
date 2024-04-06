@@ -56,6 +56,9 @@ namespace FoundationR
             this.RegisterHooks();
             window.form = new SurfaceForm(window);
             _rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
+            HWND = FindWindowByCaption(IntPtr.Zero, window.Title);
+            HDC = GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403);
+            Handle = window.form.Handle;
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs() { form = window.form });
             Thread t = new Thread(() => Loop(ref running));
@@ -140,9 +143,6 @@ namespace FoundationR
                     taskDone = true;
                 }
             }
-            HDC = GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403);
-            HWND = FindWindowByCaption(IntPtr.Zero, window.Title);
-            Handle = window.form.Handle;
             window.form.ShowDialog();
         }
         bool UpdateLimiter(Stopwatch watch1)

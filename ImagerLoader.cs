@@ -125,19 +125,17 @@ namespace FoundationR
         [DllImport(".\\Direct2D_Render.dll")]
         static extern void Direct2D_Init(IntPtr hwnd, uint width, uint height);
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Draw(byte[] buffer, uint x, uint y, uint width, uint height);
-        [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Draw1(byte[] buffer, uint x, uint y, uint width, uint height);
-        [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_Begin();
-        [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Direct2D_End(byte index);
-        [DllImport(".\\Direct2D_Render.dll")]
         static extern void Direct2D_Render(byte[] buffer, uint width, uint height);
         [DllImport(".\\Direct2D_Render.dll")]
-        static extern void Dispose();
-        
-        public static RenderOption renderOption = RenderOption.Direct2D;
+        static extern void Direct2D_Dispose();
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_Draw(byte[] buffer, uint x, uint y, uint width, uint height);
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_Clear();
+        [DllImport(".\\Direct2D_Render.dll")]
+        static extern void Direct2D_Paint();
+
+        public static RenderOption renderOption = RenderOption.GDI;
         public virtual int stride => width * ((BitsPerPixel + 7) / 8);
         internal static int width, height;
         private static int oldWidth, oldHeight;
@@ -159,8 +157,14 @@ namespace FoundationR
             RewBatch.width = width;
             RewBatch.height = height;
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Init(default, (uint)width, (uint)height);
+                Direct2D_Init(Foundation.HWND, (uint)width, (uint)height);
             else 
+            if (renderOption == RenderOption.Both)
+            {
+                Direct2D_Init(Foundation.Handle, (uint)width, (uint)height);
+                backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+            }
+            else
                 backBuffer = new byte[width * height * (BitsPerPixel / 8)];
         }
         public bool Resize(int width, int height)
@@ -173,8 +177,8 @@ namespace FoundationR
                 RewBatch.oldHeight = height;
                 if (renderOption == RenderOption.Direct2D)
                 { 
-                    Dispose();
-                    Direct2D_Init(default, (uint)width, (uint)height);
+                    Direct2D_Dispose();
+                    Direct2D_Init(Foundation.Handle, (uint)width, (uint)height);
                 }
                 else 
                     backBuffer = new byte[width * height * (BitsPerPixel / 8)];
@@ -185,7 +189,9 @@ namespace FoundationR
         public void Begin(IntPtr hdc)
         {
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Begin((uint)Viewport.X, (uint)Viewport.Y);
+            { 
+                Direct2D_Clear(); 
+            }
             else
                 backBuffer = new byte[width * height * (BitsPerPixel / 8)];
         }         
@@ -195,19 +201,19 @@ namespace FoundationR
             if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
                 return;
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Draw1(image.GetPixels(), (uint)rectangle.X, (uint)rectangle.Y, (uint)rectangle.Width, (uint)rectangle.Height);
+                Direct2D_Draw(image.GetPixels(), (uint)rectangle.X, (uint)rectangle.Y, (uint)rectangle.Width, (uint)rectangle.Height);
             else
-                CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
+                CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
         }
         public virtual void Draw(REW image, Rectangle rectangle, Color color)
         {
             if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
                 return;
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Draw1(image.GetPixels().Recolor(color), (uint)rectangle.X, (uint)rectangle.Y, (uint)rectangle.Width, (uint)rectangle.Height);
+                Direct2D_Draw(image.GetPixels().Recolor(color), (uint)rectangle.X, (uint)rectangle.Y, (uint)rectangle.Width, (uint)rectangle.Height);
             else
-                CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), rectangle.Width, rectangle.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
-        }
+                CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), image.Width, image.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
+        }                            
         public virtual void Draw(REW image, int x, int y)
         {
             if (Culling(image.Width, image.Height, x, y))
@@ -215,7 +221,7 @@ namespace FoundationR
             int w = image.Width;
             int h = image.Height;
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Draw1(image.GetPixels(), (uint)x, (uint)y, (uint)w, (uint)h);
+                Direct2D_Draw(image.GetPixels(), (uint)x, (uint)y, (uint)w, (uint)h);
             else
                 CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
         }
@@ -226,7 +232,7 @@ namespace FoundationR
             int w = image.Width;
             int h = image.Height; 
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Draw1(image.GetPixels().Recolor(color), (uint)x, (uint)y, (uint)w, (uint)h);
+                Direct2D_Draw(image.GetPixels().Recolor(color), (uint)x, (uint)y, (uint)w, (uint)h);
             else
                 CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(color), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
         }
@@ -235,10 +241,10 @@ namespace FoundationR
             if (Culling(width, height, x, y))
                 return;
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Draw1(image, (uint)x, (uint)y, (uint)width, (uint)height);
+                Direct2D_Draw(image, (uint)x, (uint)y, (uint)width, (uint)height);
             else
                 CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image, width, height, x - Viewport.X, y - Viewport.Y, x, y);
-        }           
+        }               
         
         public virtual void DrawString(string font, string text, Vector2 v2, Color color)
         {
@@ -313,7 +319,7 @@ namespace FoundationR
                     ReleaseDC(IntPtr.Zero, handle);
                     goto default;
                 case RenderOption.Direct2D:
-                    Direct2D_End(0);
+                    Direct2D_Paint();
                     goto default;
                 case RenderOption.Both:
                     Direct2D_Render(backBuffer, (uint)Viewport.Width, (uint)Viewport.Height);
@@ -346,6 +352,8 @@ namespace FoundationR
         }
         public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y, int origX, int origY, bool text = false)
         {
+            Core.Process_Pointer_Cast(x, y, bufferWidth, imageWidth, buffer, image);
+            return;
             Parallel.For(0, imageHeight, i =>
             {
                 for (int j = 0; j < imageWidth; j++)
@@ -1001,9 +1009,9 @@ namespace FoundationR
                     case RenderOption.None:
                     case RenderOption.Both:
                     case RenderOption.GDI:      // CPU compositing requires:
-                        array[index] = i.B;     // B, 
+                        array[index] = i.R;     // B, 
                         array[index + 1] = i.G; // G, 
-                        array[index + 2] = i.R; // R, 
+                        array[index + 2] = i.B; // R, 
                         array[index + 3] = i.A; // A
                         break;
                     case RenderOption.Direct2D:

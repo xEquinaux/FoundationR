@@ -27,41 +27,67 @@ namespace FoundationR
     { 
         public static void Process_Pointer_Cast(int x, int y, int sourceWidth, int overlayWidth, byte[] source, byte[] overlay)
         {
-            int pixelCount = overlay.Length;
-            int bufferIndex = (y * sourceWidth + x) * 4;
+            int pixelCount = overlay.Length / 4;
+            int bufferIndex = (y * sourceWidth + x);
             int fix = Math.Abs(bufferIndex - source.Length);
             int padding = sourceWidth - overlayWidth;
             int newWidth = overlayWidth;
-            int compensate = 0;
             int n = 0;
+            if (x >= sourceWidth)
+            {
+                return;
+            }
+            if (x < 0)
+            {
+                return;
+                x = Math.Abs(x);
+                bufferIndex = x;
+            }
+            if (y < 0)
+            {
+                return;
+                bufferIndex -= -y * overlayWidth;
+            }
             if (pixelCount > fix)
             {
                 pixelCount = fix;
             }
-            if (pixelCount + bufferIndex > source.Length)
+            if (pixelCount + bufferIndex > source.Length / 4)
             {
-                pixelCount -= pixelCount + bufferIndex - source.Length;
+                pixelCount -= pixelCount + bufferIndex - source.Length / 4;
             }
             if (x + overlayWidth > sourceWidth)
             {
-                newWidth = sourceWidth - overlayWidth;
+                newWidth = Math.Abs(x - sourceWidth);
+            }
+            if (padding < 0)
+            {
+                padding = 0;
+            }
+            if (bufferIndex < 0 || bufferIndex >= source.Length / 4)
+            {
+                return;
             }
             unsafe
             {
-                fixed (byte* onePtr = &source[0])
+                fixed (byte* onePtr = &source[bufferIndex * 4])
                 {
                     fixed (byte* twoPtr = &overlay[0])
                     {
                         RGBA* srcARGB = (RGBA*)onePtr;
                         RGBA* ovrARGB = (RGBA*)twoPtr;
 
-                        for (int m = 0; m < bufferIndex; m++)
-                        {
-                            srcARGB++;
-                        }
                         for (int i = 0; i < pixelCount; i++)
                         {
-                            byte a = (byte)((ovrARGB->a + srcARGB->a) / 2);
+                            if (ovrARGB->a == 0 && srcARGB->a == 0)
+                            {
+                                continue;
+                            }
+                            byte a = 255;
+                            if (ovrARGB->a != 255 && srcARGB->a != 255)
+                            { 
+                                a = (byte)((ovrARGB->a + srcARGB->a) / 2);
+                            }
                             byte r = (byte)(ovrARGB->r * 0.15 + srcARGB->r * (1 - 0.15));
                             byte g = (byte)(ovrARGB->g * 0.15 + srcARGB->g * (1 - 0.15));
                             byte b = (byte)(ovrARGB->b * 0.15 + srcARGB->b * (1 - 0.15));
@@ -71,7 +97,7 @@ namespace FoundationR
                             srcARGB->g = g;
                             srcARGB->b = b;
 
-                            if (++n == newWidth)
+                            if (n++ == newWidth)
                             {
                                 for (int j = 0; j < padding; j++)
                                 { 
