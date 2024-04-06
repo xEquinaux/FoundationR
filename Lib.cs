@@ -27,6 +27,23 @@ namespace FoundationR
         static extern void Direct2D_Init(uint width, uint height);
         [DllImport(".\\Direct2D_Render.dll")]
         static extern void Direct2D_InitEx(IntPtr hWnd, uint width, uint height);
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr CreateWindowEx(
+            uint dwExStyle,
+            string lpClassName,
+            string lpWindowName,
+            uint dwStyle,
+            int x,
+            int y,
+            int nWidth,
+            int nHeight,
+            IntPtr hWndParent,
+            IntPtr hMenu,
+            IntPtr hInstance,
+            IntPtr lpParam);
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
         bool flag = true, flag2 = true, init, init2, running = true;
         public static int offX, offY;
@@ -35,6 +52,8 @@ namespace FoundationR
         protected static RewBatch _rewBatch;
         public static IntPtr HDC, HWND, Handle;
         public Stopwatch watch = new Stopwatch();
+        internal static IList<Keys> Keyboard = new List<Keys>();
+        internal static bool MouseLeft;
 
         internal class SurfaceForm : Form
         {
@@ -54,30 +73,18 @@ namespace FoundationR
             }
         }
 
-        [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr CreateWindowEx(
-            uint dwExStyle,
-            string lpClassName,
-            string lpWindowName,
-            uint dwStyle,
-            int x,
-            int y,
-            int nWidth,
-            int nHeight,
-            IntPtr hWndParent,
-            IntPtr hMenu,
-            IntPtr hInstance,
-            IntPtr lpParam);
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
         public virtual void RegisterHooks()
         {
         }
+        public virtual void ClearInput()
+        { 
+            Keyboard.Clear();
+            MouseLeft = false;
+        }
         internal void Run(Surface window)
         {
+            InterceptKeys.Register(); 
+            MouseClickCapture.Register();
             this.RegisterHooks();
             window.form = new SurfaceForm(window);
             _rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
@@ -92,7 +99,7 @@ namespace FoundationR
                     proc.Refresh();
                     goto START;
                 }
-                Direct2D_InitEx(proc.handle, (uint)window.Width, (uint)window.Height);
+                Direct2D_InitEx(proc.MainWindowHandle, (uint)window.Width, (uint)window.Height);
             }
             else
             {
@@ -117,6 +124,8 @@ namespace FoundationR
 
                 while (running)
                 {
+                    InputEvent?.Invoke(new InputArgs() { keyboard = Keyboard, mousePosition = MouseCapture.GetCursorPosition(), mouseLeft = MouseLeft });
+
                     double currentTime = watch.Elapsed.TotalSeconds;
                     watch.Restart();
                     deltaTime = currentTime - oldTime;
@@ -128,13 +137,18 @@ namespace FoundationR
                     {
                         accumulator = 0d;
                     }
-                    while (accumulator >= targetFrameTime)
+                    if (accumulator >= targetFrameTime)
                     {
                         update(ref flag2);
                         accumulator -= targetFrameTime;
                     }
-
-                    //draw(ref flag, window);
+                    ClearInput();
+                    if ((bool)ExitEvent?.Invoke(new ExitArgs()))
+                    {
+                        MouseClickCapture.Unregister();
+                        InterceptKeys.Unregister();
+                        Application.Exit();
+                    }
                 }
             }
 
@@ -147,7 +161,6 @@ namespace FoundationR
                     if (taskDone)
                     {
                         taskDone = false;
-                        InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
                         InternalBegin(window);
                         if ((bool)ResizeEvent?.Invoke(new ResizeArgs()))
                         {
@@ -231,6 +244,8 @@ namespace FoundationR
         public delegate void Event<T>(T e);
         public delegate void Event();
         public delegate bool Resize<T>(T e);
+        public delegate bool Exit<T>(T e);
+        public static event Exit<ExitArgs> ExitEvent;
         public static event Resize<ResizeArgs> ResizeEvent;
         public static event Event<InitializeArgs> InitializeEvent;
         public static event Event<InputArgs> InputEvent;
@@ -271,7 +286,12 @@ namespace FoundationR
         }
         public class InputArgs : IArgs
         {
-            public Point mouse;
+            public bool mouseLeft;
+            public Point mousePosition;
+            public IList<Keys> keyboard;
+        }
+        public class ExitArgs : IArgs
+        {
         }
         #endregion
     }
