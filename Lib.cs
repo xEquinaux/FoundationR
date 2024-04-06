@@ -27,7 +27,7 @@ namespace FoundationR
         public static Rectangle bounds;
         internal static Camera viewport = new Camera();
         protected static RewBatch _rewBatch;
-        public static IntPtr HDC;
+        public static IntPtr HDC, HWND, Handle;
         public Stopwatch watch = new Stopwatch();
 
         internal class SurfaceForm : Form
@@ -55,7 +55,6 @@ namespace FoundationR
         {
             this.RegisterHooks();
             window.form = new SurfaceForm(window);
-            HDC = window.form.Handle;
             _rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs() { form = window.form });
@@ -126,7 +125,7 @@ namespace FoundationR
                             PreDrawEvent?.Invoke(new PreDrawArgs() { rewBatch = _rewBatch });
                             DrawEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
                             CameraEvent?.Invoke(new CameraArgs() { rewBatch = _rewBatch, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
-                            InternalEnd();
+                            InternalEnd(GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
                         }
                         taskDone = true;
                     }
@@ -141,6 +140,9 @@ namespace FoundationR
                     taskDone = true;
                 }
             }
+            HDC = GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403);
+            HWND = FindWindowByCaption(IntPtr.Zero, window.Title);
+            Handle = window.form.Handle;
             window.form.ShowDialog();
         }
         bool UpdateLimiter(Stopwatch watch1)
@@ -195,9 +197,9 @@ namespace FoundationR
         {
             _rewBatch.Begin(hdc);
         }
-        private void InternalEnd()
+        private void InternalEnd(IntPtr handle)
         {
-            _rewBatch.End();
+            _rewBatch.End(RewBatch.renderOption, handle);
         }
         #region events
         public delegate void Event<T>(T e);

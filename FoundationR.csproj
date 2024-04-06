@@ -8,6 +8,7 @@
 	<UseWindowsForms>true</UseWindowsForms>
 	<LangVersion>10</LangVersion>
 	<StartupObject>FoundationR.App</StartupObject>
+	<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
