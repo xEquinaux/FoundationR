@@ -54,6 +54,7 @@ namespace FoundationR
         public Stopwatch watch = new Stopwatch();
         internal static IList<Keys> Keyboard = new List<Keys>();
         internal static bool MouseLeft;
+        static IntPtr handle;
 
         internal class SurfaceForm : Form
         {
@@ -99,7 +100,7 @@ namespace FoundationR
                     proc.Refresh();
                     goto START;
                 }
-                Direct2D_InitEx(proc.MainWindowHandle, (uint)window.Width, (uint)window.Height);
+                Direct2D_InitEx(handle = proc.MainWindowHandle, (uint)window.Width, (uint)window.Height);
             }
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs() { form = window.form });
@@ -120,7 +121,13 @@ namespace FoundationR
 
                 while (running)
                 {
-                    InputEvent?.Invoke(new InputArgs() { keyboard = Keyboard, mousePosition = MouseCapture.GetCursorPosition(), mouseLeft = MouseLeft });
+                    InputEvent?.Invoke(new InputArgs() 
+                    { 
+                        keyboard = Keyboard, 
+                        mousePosition = MouseCapture.GetCursorPosition(), 
+                        mouseLeft = MouseLeft,
+                        windowBounds = WindowUtils.GetWindowRectangleWithoutShadows(handle)
+                    });
 
                     double currentTime = watch.Elapsed.TotalSeconds;
                     watch.Restart();
@@ -206,27 +213,6 @@ namespace FoundationR
             return false;
         }
 
-        public static class WindowUtils
-        {
-            [DllImport("dwmapi.dll")]
-            static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
-
-            public struct RECT
-            {
-                public int Left;
-                public int Top;
-                public int Right;
-                public int Bottom;
-            }
-
-            public static RECT GetWindowRectangleWithoutShadows(IntPtr handle)
-            {
-                RECT rect;
-                DwmGetWindowAttribute(handle, 9 /* DWMWA_EXTENDED_FRAME_BOUNDS */, out rect, Marshal.SizeOf(typeof(RECT)));
-                return rect;
-            }
-        }
-
         private void InternalBegin(Surface window)
         {
             _rewBatch.Begin(IntPtr.Zero);
@@ -242,10 +228,10 @@ namespace FoundationR
         #region events
         public delegate void Event<T>(T e);
         public delegate void Event();
-        public delegate bool Resize<T>(T e);
-        public delegate bool Exit<T>(T e);
-        public static event Exit<ExitArgs> ExitEvent;
-        public static event Resize<ResizeArgs> ResizeEvent;
+        public delegate bool _Resize<T>(T e);
+        public delegate bool _Exit<T>(T e);
+        public static event _Exit<ExitArgs> ExitEvent;
+        public static event _Resize<ResizeArgs> ResizeEvent;
         public static event Event<InitializeArgs> InitializeEvent;
         public static event Event<InputArgs> InputEvent;
         public static event Event LoadResourcesEvent;
@@ -288,6 +274,7 @@ namespace FoundationR
             public bool mouseLeft;
             public Point mousePosition;
             public IList<Keys> keyboard;
+            public RECT windowBounds;
         }
         public class ExitArgs : IArgs
         {
@@ -327,5 +314,24 @@ namespace FoundationR
         public virtual bool isMoving => velocity != Vector2.Zero || oldPosition != position;
         public bool follow = false;
         public bool active = false;
+    }
+    public struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+    public static class WindowUtils
+    {
+        [DllImport("dwmapi.dll")]
+        static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
+
+        public static RECT GetWindowRectangleWithoutShadows(IntPtr handle)
+        {
+            RECT rect;
+            DwmGetWindowAttribute(handle, 9 /* DWMWA_EXTENDED_FRAME_BOUNDS */, out rect, Marshal.SizeOf(typeof(RECT)));
+            return rect;
+        }
     }
 }
