@@ -145,7 +145,7 @@ namespace FoundationR
                         update(ref flag2);
                         accumulator -= targetFrameTime;
                     }
-                    CameraEvent?.Invoke(new CameraArgs() { CAMERA = viewport });
+                    ViewportEvent?.Invoke(new ViewportArgs() { CAMERA = viewport });
                     ClearInput();
                     if ((bool)ExitEvent?.Invoke(new ExitArgs()))
                     {
@@ -239,7 +239,7 @@ namespace FoundationR
         public static event Event<PreDrawArgs> PreDrawEvent;
         public static event Event<DrawingArgs> DrawEvent;
         public static event Event<UpdateArgs> UpdateEvent;
-        public static event Event<CameraArgs> CameraEvent;
+        public static event Event<ViewportArgs> ViewportEvent;
         public interface IArgs
         {
         }
@@ -257,7 +257,7 @@ namespace FoundationR
         public class UpdateArgs : IArgs
         {
         }
-        public class CameraArgs : IArgs
+        public class ViewportArgs : IArgs
         {
             public Viewport CAMERA;
         }
