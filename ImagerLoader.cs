@@ -147,7 +147,7 @@ namespace FoundationR
         public virtual short BitsPerPixel { get; protected set; }
         internal static byte[] backBuffer;
         IntPtr hdc;
-        public static Camera Viewport
+        public static Viewport Viewport
         { 
             get { return Foundation.viewport; }
             set { Foundation.viewport = value; }
@@ -428,7 +428,7 @@ namespace FoundationR
 
         bool Culling(int x, int y, int imageWidth, int imageHeight)
         {
-            if (x < 0 || y < 0 || x + imageWidth >= Viewport.Right || y + imageHeight >= Viewport.Bottom)
+            if (x < 0 || y < 0 || x + imageWidth >= Viewport.Width || y + imageHeight >= Viewport.Height)
                 return true;
             return false;
         }

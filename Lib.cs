@@ -48,7 +48,7 @@ namespace FoundationR
         bool flag = true, flag2 = true, init, init2, running = true;
         public static int offX, offY;
         public static Rectangle bounds;
-        internal static Camera viewport = new Camera();
+        internal static Viewport viewport = new Viewport();
         protected static RewBatch _rewBatch;
         public static IntPtr HDC, HWND, Handle;
         public Stopwatch watch = new Stopwatch();
@@ -145,6 +145,7 @@ namespace FoundationR
                         update(ref flag2);
                         accumulator -= targetFrameTime;
                     }
+                    CameraEvent?.Invoke(new CameraArgs() { CAMERA = viewport });
                     ClearInput();
                     if ((bool)ExitEvent?.Invoke(new ExitArgs()))
                     {
@@ -170,7 +171,6 @@ namespace FoundationR
                         MainMenuEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
                         PreDrawEvent?.Invoke(new PreDrawArgs() { rewBatch = _rewBatch });
                         DrawEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
-                        CameraEvent?.Invoke(new CameraArgs() { rewBatch = _rewBatch, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
                         InternalEnd(GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
                         taskDone = true;
                     }
@@ -259,11 +259,7 @@ namespace FoundationR
         }
         public class CameraArgs : IArgs
         {
-            public RewBatch rewBatch;
-            public Camera CAMERA;
-            public Rectangle screen;
-            public int offX, offY;
-            public byte[] backBuffer;
+            public Viewport CAMERA;
         }
         public class InitializeArgs : IArgs
         {
@@ -299,7 +295,7 @@ namespace FoundationR
         public int BitsPerPixel;
         public Form form;
     }
-    public class Camera
+    public class Viewport
     {
         public Vector2 oldPosition;
         public Vector2 position;
