@@ -375,7 +375,7 @@ namespace FoundationR
                     break;
             }
         }
-        public byte[] CropARGBImage(byte[] image, int width, int height, int x, int y, out int nWidth, out int nHeight)
+        public byte[] CropARGBImage(byte[] image, int width, int height, int x, int y, out int cropWidth, out int cropHeight)
         {
             int offX1 = x - Viewport.X;
             int offY1 = y - Viewport.Y;
@@ -384,8 +384,8 @@ namespace FoundationR
             int m1 = x, n1 = y, m2 = x + width, n2 = y + height;
             if (x == Viewport.Right || y == Viewport.Bottom)
             {
-                nWidth = 1;
-                nHeight = 1;
+                cropWidth = 1;
+                cropHeight = 1;
                 return new byte[4];
             }
             if (x < Viewport.X)
@@ -404,25 +404,26 @@ namespace FoundationR
             {
                 n2 = offY2;
             }
-            int pixelLength = 4;
-            int newWidth = m2 + m1;
-            nWidth = m2 + m1;
-            nHeight = n2 + n1;
-            byte[] croppedImage = new byte[nWidth * nHeight * pixelLength];
+            cropWidth = m2 + m1;
+            cropHeight = n2 + n1;
 
-            for (int i = 0; i < nWidth; i++)
+            int pixelLength = 4;
+            byte[] croppedImage = new byte[cropWidth * cropHeight * pixelLength];
+
+            for (int i = 0; i < cropHeight; i++)
             {
-                for (int j = 0; j < nHeight; j++)
+                for (int j = 0; j < cropWidth; j++)
                 {
                     int pixelIndex = ((y + i) * width + (x + j)) * pixelLength;
-                    int newPixelIndex = (i * newWidth + j) * pixelLength;
-                    
+                    int newPixelIndex = (i * cropWidth + j) * pixelLength;
+
                     Array.Copy(image, pixelIndex, croppedImage, newPixelIndex, pixelLength);
                 }
             }
 
             return croppedImage;
         }
+
         bool Culling(int imageWidth, int imageHeight, int origX, int origY)
         {
             if (origX + imageWidth <= Viewport.X)
