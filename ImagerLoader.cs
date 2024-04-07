@@ -139,12 +139,13 @@ namespace FoundationR
         static extern void Direct2D_End();
 
 
-        public static RenderOption renderOption = RenderOption.Direct2D;
+        public static RenderOption renderOption = RenderOption.Dire;
         public virtual int stride => width * ((BitsPerPixel + 7) / 8);
         internal static int width, height;
         private static int oldWidth, oldHeight;
         public virtual short BitsPerPixel { get; protected set; }
         internal static byte[] backBuffer;
+        IntPtr hdc;
         public static Camera Viewport
         { 
             get { return Foundation.viewport; }
@@ -165,7 +166,7 @@ namespace FoundationR
             else 
             if (renderOption == RenderOption.Both)
             {
-                Direct2D_Init(Foundation.Handle, (uint)width, (uint)height);
+                Direct2D_Init(IntPtr.Zero, (uint)width, (uint)height);
                 backBuffer = new byte[width * height * (BitsPerPixel / 8)];
             }
             else
@@ -179,12 +180,18 @@ namespace FoundationR
                 RewBatch.oldWidth = width;
                 RewBatch.height = height;
                 RewBatch.oldHeight = height;
-                if (renderOption == RenderOption.Direct2D || renderOption == RenderOption.Both)
+                if (renderOption == RenderOption.Direct2D)
                 { 
                     Direct2D_Dispose();
-                    Direct2D_Init(Foundation.Handle, (uint)width, (uint)height);
+                    Direct2D_Init(IntPtr.Zero, (uint)width, (uint)height);
                 }
-                else 
+                else if (renderOption == RenderOption.Both)
+                {
+                    Direct2D_Dispose();
+                    Direct2D_Init(IntPtr.Zero, (uint)width, (uint)height);
+                    backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+                }
+                else
                     backBuffer = new byte[width * height * (BitsPerPixel / 8)];
                 return true;
             }
@@ -192,13 +199,21 @@ namespace FoundationR
         }
         public void Begin(IntPtr hdc)
         {
-            if (renderOption == RenderOption.Direct2D || renderOption == RenderOption.Both)
+            if (renderOption == RenderOption.Direct2D)
             { 
                 Direct2D_Begin();
                 Direct2D_Clear(); 
             }
-            else
+            else if (renderOption == RenderOption.Both)
+            {
+                Direct2D_Begin();
+                Direct2D_Clear();
                 backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+            }
+            else
+            {
+                backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+            }
         }         
 
         public virtual void Draw(REW image, Rectangle rectangle)
@@ -354,7 +369,7 @@ namespace FoundationR
             {
                 return true;
             }                  
-            if (origX + imageWidth >= Viewport.Width + Viewport.X || origY + imageHeight >= Viewport.Height + Viewport.Y || origX <= 0 || origY <= 0)
+            if (origX + imageWidth >= Viewport.Width + Viewport.X || origY + imageHeight >= Viewport.Height + Viewport.Y || origX < 0 || origY < 0)
             { 
                 return true;
             }
@@ -362,6 +377,7 @@ namespace FoundationR
         }
         public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y, int origX, int origY, bool text = false)
         {
+            if (buffer == null || image == null) return;
             Core.Process_Pointer_Cast(x, y, bufferWidth, imageWidth, buffer, image);
             return;
             Parallel.For(0, imageHeight, i =>

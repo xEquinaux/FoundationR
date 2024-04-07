@@ -78,17 +78,17 @@ namespace FoundationR
         }
         public virtual void ClearInput()
         { 
-            Keyboard.Clear();
+            if (Keyboard.Count > 0)
+            { 
+                Keyboard.Clear();
+            }
             MouseLeft = false;
         }
         internal void Run(Surface window)
         {
-            InterceptKeys.Register(); 
-            MouseClickCapture.Register();
             this.RegisterHooks();
             window.form = new SurfaceForm(window);
             _rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
-            
             if (RewBatch.renderOption == RenderOption.Direct2D || RewBatch.renderOption == RenderOption.Both)
             {
                 Process proc = Process.Start(".\\TestBed.exe");
@@ -100,10 +100,6 @@ namespace FoundationR
                     goto START;
                 }
                 Direct2D_InitEx(proc.MainWindowHandle, (uint)window.Width, (uint)window.Height);
-            }
-            else
-            {
-                window.form.ShowDialog();
             }
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs() { form = window.form });
@@ -145,8 +141,6 @@ namespace FoundationR
                     ClearInput();
                     if ((bool)ExitEvent?.Invoke(new ExitArgs()))
                     {
-                        MouseClickCapture.Unregister();
-                        InterceptKeys.Unregister();
                         Application.Exit();
                     }
                 }
@@ -171,6 +165,7 @@ namespace FoundationR
                         DrawEvent?.Invoke(new DrawingArgs() { rewBatch = _rewBatch });
                         CameraEvent?.Invoke(new CameraArgs() { rewBatch = _rewBatch, CAMERA = viewport, offX = offX, offY = offY, screen = bounds });
                         InternalEnd(GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
+                        taskDone = true;
                     }
                 }
             }
@@ -182,6 +177,10 @@ namespace FoundationR
                     UpdateEvent?.Invoke(new UpdateArgs());
                     taskDone = true;
                 }
+            }
+            if (RewBatch.renderOption == RenderOption.GDI)
+            { 
+                window.form.ShowDialog();
             }
         }
         bool UpdateLimiter(Stopwatch watch1)
@@ -230,7 +229,7 @@ namespace FoundationR
 
         private void InternalBegin(Surface window)
         {
-            _rewBatch.Begin(IntPtr.Zero);//GetDCEx(FindWindowByCaption(IntPtr.Zero, window.Title), IntPtr.Zero, 0x403));
+            _rewBatch.Begin(IntPtr.Zero);
         }
         private void InternalBegin(IntPtr hdc)
         {

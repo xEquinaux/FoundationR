@@ -26,7 +26,7 @@ namespace FoundationR
             using (Process curProcess = Process.GetCurrentProcess())
             using (ProcessModule curModule = curProcess.MainModule)
             {
-                GCHandle handle = GCHandle.Alloc(curModule.ModuleName);
+                GCHandle handle = GCHandle.Alloc(curModule.ModuleName, GCHandleType.Pinned);
                 IntPtr hook = SetWindowsHookEx(WH_KEYBOARD_LL, proc, handle.AddrOfPinnedObject(), 0);
                 handle.Free();
                 return hook;
@@ -75,7 +75,7 @@ namespace FoundationR
         }
     }
 
-    public class MouseClickCapture
+    class MouseClickCapture
     {
         private const int WH_MOUSE_LL = 14;
         private const int WM_LBUTTONDOWN = 0x0201;
