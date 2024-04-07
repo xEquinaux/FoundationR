@@ -139,7 +139,7 @@ namespace FoundationR
         static extern void Direct2D_End();
 
 
-        public static RenderOption renderOption = RenderOption.Dire;
+        public static RenderOption renderOption = RenderOption.Direct2D;
         public virtual int stride => width * ((BitsPerPixel + 7) / 8);
         internal static int width, height;
         private static int oldWidth, oldHeight;
@@ -218,50 +218,74 @@ namespace FoundationR
 
         public virtual void Draw(REW image, Rectangle rectangle)
         {
+            int w = rectangle.Width;
+            int h = rectangle.Height;
+            byte[] result = null;
             if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
-                return;
+                result = CropARGBImage(image.GetPixels(), rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y, out w, out h);
+            else 
+                result = image.GetPixels();
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Draw(image.GetPixels(), (uint)rectangle.X, (uint)rectangle.Y, (uint)rectangle.Width, (uint)rectangle.Height);
+                Direct2D_Draw(result, (uint)rectangle.X, (uint)rectangle.Y, (uint)w, (uint)h);
             else
                 CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
+            result = null;
         }
         public virtual void Draw(REW image, Rectangle rectangle, Color color)
         {
+            int w = Math.Min(rectangle.Width, Viewport.Width);
+            int h = Math.Min(rectangle.Height, Viewport.Height);
+            byte[] result = null;
             if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
-                return;
+                result = CropARGBImage(image.GetPixels().Recolor(Convert(color)), image.Width, image.Height, rectangle.X, rectangle.Y, out w, out h);
+            else 
+                result = image.GetPixels().Recolor(Convert(color));
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Draw(image.GetPixels().Recolor(Convert(color)), (uint)rectangle.X, (uint)rectangle.Y, (uint)rectangle.Width, (uint)rectangle.Height);
+                Direct2D_Draw(result, (uint)rectangle.X, (uint)rectangle.Y, (uint)w, (uint)h);
             else
-                CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(Convert(color)), image.Width, image.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
+                CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
+            result = null;
         }                            
         public virtual void Draw(REW image, int x, int y)
         {
+            int w = Math.Min(image.Width, Viewport.Width);
+            int h = Math.Min(image.Height, Viewport.Height);
+            byte[] result = null;
             if (Culling(image.Width, image.Height, x, y))
-                return;
-            int w = image.Width;
-            int h = image.Height;
+                result = CropARGBImage(image.GetPixels(), image.Width, image.Height, x, y, out w, out h);
+            else 
+                result = image.GetPixels();
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Draw(image.GetPixels(), (uint)x, (uint)y, (uint)w, (uint)h);
+                Direct2D_Draw(result, (uint)x, (uint)y, (uint)w, (uint)h);
             else
                 CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
+            result = null;
         }
         public virtual void Draw(REW image, int x, int y, Color color)
         {
+            int w = Math.Min(image.Width, Viewport.Width);
+            int h = Math.Min(image.Height, Viewport.Height);
+            byte[] result = null;
             if (Culling(image.Width, image.Height, x, y))
-                return;
-            int w = image.Width;
-            int h = image.Height; 
+                result = CropARGBImage(image.GetPixels().Recolor(Convert(color)), width, height, x, y, out w, out h);
+            else
+                result = image.GetPixels().Recolor(Convert(color));
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Draw(image.GetPixels().Recolor(Convert(color)), (uint)x, (uint)y, (uint)w, (uint)h);
+            {
+                Direct2D_Draw(result, (uint)x, (uint)y, (uint)w, (uint)h);
+            }
             else
                 CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(Convert(color)), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
+            result = null;
         }
         public virtual void Draw(byte[] image, int x, int y, int width, int height)
         {
+            int w = width;
+            int h = height;
             if (Culling(width, height, x, y))
-                return;
+                image = CropARGBImage(image, width, height, x, y, out w, out h);
             if (renderOption == RenderOption.Direct2D)
-                Direct2D_Draw(image, (uint)x, (uint)y, (uint)width, (uint)height);
+                Direct2D_Draw(image, (uint)x, (uint)y, (uint)w, (uint)h);
             else
                 CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image, width, height, x - Viewport.X, y - Viewport.Y, x, y);
         }               
@@ -350,6 +374,54 @@ namespace FoundationR
                     backBuffer = null;
                     break;
             }
+        }
+        public byte[] CropARGBImage(byte[] image, int width, int height, int x, int y, out int nWidth, out int nHeight)
+        {
+            int offX1 = x - Viewport.X;
+            int offY1 = y - Viewport.Y;
+            int offX2 = Math.Abs(x + width - (width - Viewport.X + Viewport.Width));
+            int offY2 = Math.Abs(y + height - (height - Viewport.Y + Viewport.Height));
+            int m1 = x, n1 = y, m2 = x + width, n2 = y + height;
+            if (x == Viewport.Right || y == Viewport.Bottom)
+            {
+                nWidth = 1;
+                nHeight = 1;
+                return new byte[4];
+            }
+            if (x < Viewport.X)
+            {
+                m1 = offX1;
+            }
+            if (x + width > Viewport.X + Viewport.Width)
+            {
+                m2 = offX2;
+            }
+            if (y < Viewport.Y)
+            {
+                n1 = offY1;
+            }
+            if (y + height > Viewport.Y + Viewport.Height)
+            {
+                n2 = offY2;
+            }
+            int pixelLength = 4;
+            int newWidth = m2 + m1;
+            nWidth = m2 + m1;
+            nHeight = n2 + n1;
+            byte[] croppedImage = new byte[nWidth * nHeight * pixelLength];
+
+            for (int i = 0; i < nWidth; i++)
+            {
+                for (int j = 0; j < nHeight; j++)
+                {
+                    int pixelIndex = ((y + i) * width + (x + j)) * pixelLength;
+                    int newPixelIndex = (i * newWidth + j) * pixelLength;
+                    
+                    Array.Copy(image, pixelIndex, croppedImage, newPixelIndex, pixelLength);
+                }
+            }
+
+            return croppedImage;
         }
         bool Culling(int imageWidth, int imageHeight, int origX, int origY)
         {

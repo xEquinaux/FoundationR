@@ -318,6 +318,8 @@ namespace FoundationR
         public Vector2 position;
         public Vector2 velocity;
         public Rectangle bounds;
+        public int Right => X + bounds.Width;
+        public int Bottom => Y + bounds.Height;
         public int Width => bounds.Width;
         public int Height => bounds.Height;
         public int X => (int)position.X;
