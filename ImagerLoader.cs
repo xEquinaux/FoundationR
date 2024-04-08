@@ -409,8 +409,7 @@ namespace FoundationR
             int backBufferWidth = Viewport.Width, backBufferHeight = Viewport.Height;  // width and height of the backbuffer
 
             var (newWidth, newHeight) = CalculateCropDimensions(X, Y, imageWidth, imageHeight, backBufferWidth, backBufferHeight);
-            //Console.WriteLine($"Cropped dimensions: {newWidth}x{newHeight}");
-
+            
             cropWidth = newWidth;
             cropHeight = newHeight;
 
@@ -421,7 +420,14 @@ namespace FoundationR
             byte[] croppedImage = new byte[newWidth * newHeight * 4];
             for (int i = 0; i < cropHeight; i++)
             {
-                Array.Copy(image, i * width * 4, croppedImage, i * newWidth * 4, newWidth * 4);
+                try
+                { 
+                    Array.Copy(image, i * width * 4, croppedImage, i * newWidth * 4, newWidth * 4);
+                }
+                catch
+                {
+                    newWidth--;
+                }
             }
             return croppedImage;
         }

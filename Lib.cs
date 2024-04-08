@@ -74,25 +74,18 @@ namespace FoundationR
             }
         }
 
-        public virtual void RegisterHooks()
+        public virtual void RegisterHooks(Form form)
         {
         }
         public virtual void ClearInput()
         { 
-            if (Keyboard.Count > 0)
-            { 
-                Keyboard.Clear();
-            }
-            MouseLeft = false;
         }
         internal void Run(Surface window)
         {
-            this.RegisterHooks();
             window.form = new SurfaceForm(window);
             _rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
-            if (RewBatch.renderOption >= 0)
+            if (RewBatch.renderOption != RenderOption.None)
             {
-                //Process proc = Process.Start(".\\TestBed.exe");
                 START:
                 if (window.form.Handle == IntPtr.Zero)
                 {
@@ -102,8 +95,9 @@ namespace FoundationR
                 }
                 Direct2D_InitEx(handle = window.form.Handle, (uint)window.Width, (uint)window.Height);
             }
+            this.RegisterHooks(window.form);
             LoadResourcesEvent?.Invoke();
-            InitializeEvent?.Invoke(new InitializeArgs() { form = window.form });
+            InitializeEvent?.Invoke(new InitializeArgs());
             Thread t = new Thread(() => Loop(ref running));
             Thread t2 = new Thread(() => draw(ref flag, window));
             t.SetApartmentState(ApartmentState.STA);
@@ -123,9 +117,6 @@ namespace FoundationR
                 {
                     InputEvent?.Invoke(new InputArgs() 
                     { 
-                        keyboard = Keyboard, 
-                        mousePosition = MouseCapture.GetCursorPosition(), 
-                        mouseLeft = MouseLeft,
                         windowBounds = WindowUtils.GetWindowRectangleWithoutShadows(handle)
                     });
 
@@ -144,9 +135,9 @@ namespace FoundationR
                     {
                         update(ref flag2);
                         accumulator -= targetFrameTime;
+                        ClearInput();
                     }
-                    ViewportEvent?.Invoke(new ViewportArgs() { CAMERA = viewport });
-                    ClearInput();
+                    ViewportEvent?.Invoke(new ViewportArgs() { viewport = viewport });
                     if ((bool)ExitEvent?.Invoke(new ExitArgs()))
                     {
                         Application.Exit();
@@ -185,7 +176,7 @@ namespace FoundationR
                     taskDone = true;
                 }
             }
-            if (RewBatch.renderOption >= 0)
+            if (RewBatch.renderOption != RenderOption.None)
             { 
                 window.form.ShowDialog();
             }
@@ -259,17 +250,13 @@ namespace FoundationR
         }
         public class ViewportArgs : IArgs
         {
-            public Viewport CAMERA;
+            public Viewport viewport;
         }
         public class InitializeArgs : IArgs
         {
-            public Form form;
         }
         public class InputArgs : IArgs
         {
-            public bool mouseLeft;
-            public Point mousePosition;
-            public IList<Keys> keyboard;
             public RECT windowBounds;
         }
         public class ExitArgs : IArgs
