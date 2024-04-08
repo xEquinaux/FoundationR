@@ -90,17 +90,17 @@ namespace FoundationR
             this.RegisterHooks();
             window.form = new SurfaceForm(window);
             _rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
-            if (RewBatch.renderOption == RenderOption.Direct2D || RewBatch.renderOption == RenderOption.Both)
+            if (RewBatch.renderOption >= 0)
             {
-                Process proc = Process.Start(".\\TestBed.exe");
+                //Process proc = Process.Start(".\\TestBed.exe");
                 START:
-                if (proc.MainWindowHandle == IntPtr.Zero)
+                if (window.form.Handle == IntPtr.Zero)
                 {
                     Task.WaitAll(Task.Delay(100));
-                    proc.Refresh();
+                    window.form.Refresh();
                     goto START;
                 }
-                Direct2D_InitEx(handle = proc.MainWindowHandle, (uint)window.Width, (uint)window.Height);
+                Direct2D_InitEx(handle = window.form.Handle, (uint)window.Width, (uint)window.Height);
             }
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs() { form = window.form });
@@ -185,7 +185,7 @@ namespace FoundationR
                     taskDone = true;
                 }
             }
-            if (RewBatch.renderOption == RenderOption.GDI)
+            if (RewBatch.renderOption >= 0)
             { 
                 window.form.ShowDialog();
             }
