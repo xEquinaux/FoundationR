@@ -40,7 +40,7 @@ namespace FoundationR
             if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
             {
                 int vkCode = Marshal.ReadInt32(lParam);
-                Foundation.Keyboard.Add((Keys)vkCode);
+                //Foundation.Keyboard.Add((Keys)vkCode);
             }
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
         }
@@ -106,7 +106,7 @@ namespace FoundationR
         {
             if (nCode >= 0 && wParam == (IntPtr)WM_LBUTTONDOWN)
             {
-                Foundation.MouseLeft = true;
+                //Foundation.MouseLeft = true;
             }
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
         }

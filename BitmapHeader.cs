@@ -4,6 +4,11 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using FoundationR.Lib;
+using FoundationR.Rew;
+using FoundationR.Loader;
+using FoundationR.Ext;
+using FoundationR.Headers;
 
 namespace FoundationR
 {
