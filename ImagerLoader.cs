@@ -148,7 +148,7 @@ namespace FoundationR.Rew
       static extern void Direct2D_End();
 
 
-      public static RenderOption renderOption = RenderOption.Direct2D;
+      public static RenderOption renderOption = RenderOption.GDI;
       public virtual int stride => width * ((BitsPerPixel + 7) / 8);
       internal static int width, height;
       private static int oldWidth, oldHeight;
@@ -171,38 +171,38 @@ namespace FoundationR.Rew
          RewBatch.width = width;
          RewBatch.height = height;
          if (renderOption == RenderOption.Direct2D)
-               Direct2D_Init(IntPtr.Zero, (uint)width, (uint)height);
+            Direct2D_Init(IntPtr.Zero, (uint)width, (uint)height);
          else 
          if (renderOption == RenderOption.Both)
          {
-               Direct2D_Init(IntPtr.Zero, (uint)width, (uint)height);
-               backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+            Direct2D_Init(IntPtr.Zero, (uint)width, (uint)height);
+            backBuffer = new byte[width * height * (BitsPerPixel / 8)];
          }
          else
-               backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+            backBuffer = new byte[width * height * (BitsPerPixel / 8)];
       }
       public bool Resize(int width, int height)
       {
          if (oldWidth != width || oldHeight != height)
          {
-               RewBatch.width = width;
-               RewBatch.oldWidth = width;
-               RewBatch.height = height;
-               RewBatch.oldHeight = height;
-               if (renderOption == RenderOption.Direct2D)
-               { 
-                  Direct2D_Dispose();
-                  Direct2D_Init(IntPtr.Zero, (uint)width, (uint)height);
-               }
-               else if (renderOption == RenderOption.Both)
-               {
-                  Direct2D_Dispose();
-                  Direct2D_Init(IntPtr.Zero, (uint)width, (uint)height);
-                  backBuffer = new byte[width * height * (BitsPerPixel / 8)];
-               }
-               else
-                  backBuffer = new byte[width * height * (BitsPerPixel / 8)];
-               return true;
+            RewBatch.width = width;
+            RewBatch.oldWidth = width;
+            RewBatch.height = height;
+            RewBatch.oldHeight = height;
+            if (renderOption == RenderOption.Direct2D)
+            { 
+               Direct2D_Dispose();
+               Direct2D_Init(IntPtr.Zero, (uint)width, (uint)height);
+            }
+            else if (renderOption == RenderOption.Both)
+            {
+               Direct2D_Dispose();
+               Direct2D_Init(IntPtr.Zero, (uint)width, (uint)height);
+               backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+            }
+            else
+               backBuffer = new byte[width * height * (BitsPerPixel / 8)];
+            return true;
          }
          return false;
       }
@@ -248,15 +248,15 @@ namespace FoundationR.Rew
          int h = Math.Min(rectangle.Height, Viewport.Height);
          byte[] result = null;
          if (Culling(rectangle.Width, rectangle.Height, rectangle.X, rectangle.Y))
-               result = CropARGBImage(image.GetPixels().Recolor(Convert(color)), image.Width, image.Height, rectangle.X, rectangle.Y, out w, out h);
+            result = CropARGBImage(image.GetPixels().Recolor(Convert(color)), image.Width, image.Height, rectangle.X, rectangle.Y, out w, out h);
          else 
-               result = image.GetPixels().Recolor(Convert(color));
+            result = image.GetPixels().Recolor(Convert(color));
          if (result == null)
-               return;
+            return;
          if (renderOption == RenderOption.Direct2D)
-               Direct2D_Draw(result, (uint)rectangle.X, (uint)rectangle.Y, (uint)w, (uint)h);
+            Direct2D_Draw(result, (uint)rectangle.X, (uint)rectangle.Y, (uint)w, (uint)h);
          else
-               CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, rectangle.X - Viewport.X, rectangle.Y - Viewport.Y, rectangle.X, rectangle.Y);
          result = null;
       }                            
       public virtual void Draw(REW image, int x, int y)
@@ -265,15 +265,15 @@ namespace FoundationR.Rew
          int h = Math.Min(image.Height, Viewport.Height);
          byte[] result = null;
          if (Culling(image.Width, image.Height, x, y))
-               result = CropARGBImage(image.GetPixels(), image.Width, image.Height, x, y, out w, out h);
+            result = CropARGBImage(image.GetPixels(), image.Width, image.Height, x, y, out w, out h);
          else 
-               result = image.GetPixels();
+            result = image.GetPixels();
          if (result == null)
-               return;
+            return;
          if (renderOption == RenderOption.Direct2D)
-               Direct2D_Draw(result, (uint)x, (uint)y, (uint)w, (uint)h);
+            Direct2D_Draw(result, (uint)x, (uint)y, (uint)w, (uint)h);
          else
-               CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels(), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
          result = null;
       }
       public virtual void Draw(REW image, int x, int y, Color color)
@@ -282,17 +282,17 @@ namespace FoundationR.Rew
          int h = Math.Min(image.Height, Viewport.Height);
          byte[] result = null;
          if (Culling(image.Width, image.Height, x, y))
-               result = CropARGBImage(image.GetPixels().Recolor(Convert(color)), image.Width, image.Height, x, y, out w, out h);
+            result = CropARGBImage(image.GetPixels().Recolor(Convert(color)), image.Width, image.Height, x, y, out w, out h);
          else
                result = image.GetPixels().Recolor(Convert(color));
          if (result == null)
-               return; 
+            return; 
          if (renderOption == RenderOption.Direct2D)
          {
-               Direct2D_Draw(result, (uint)x, (uint)y, (uint)w, (uint)h);
+            Direct2D_Draw(result, (uint)x, (uint)y, (uint)w, (uint)h);
          }
          else
-               CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(Convert(color)), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image.GetPixels().Recolor(Convert(color)), image.Width, image.Height, x - Viewport.X, y - Viewport.Y, x, y);
          result = null;
       }
       public virtual void Draw(byte[] image, int x, int y, int width, int height)
@@ -300,13 +300,13 @@ namespace FoundationR.Rew
          int w = width;
          int h = height;
          if (Culling(width, height, x, y))
-               image = CropARGBImage(image, width, height, x, y, out w, out h);
+            image = CropARGBImage(image, width, height, x, y, out w, out h);
          if (image == null)
                return;
          if (renderOption == RenderOption.Direct2D)
-               Direct2D_Draw(image, (uint)x, (uint)y, (uint)w, (uint)h);
+            Direct2D_Draw(image, (uint)x, (uint)y, (uint)w, (uint)h);
          else
-               CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image, width, height, x - Viewport.X, y - Viewport.Y, x, y);
+            CompositeImage(backBuffer, RewBatch.width, RewBatch.height, image, width, height, x - Viewport.X, y - Viewport.Y, x, y);
          image = null;
       }               
         
@@ -315,13 +315,13 @@ namespace FoundationR.Rew
          Bitmap image = new Bitmap(width, height);
          using (Graphics graphics = Graphics.FromImage(image))
          {
-               graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-               Font _font = new Font("Arial", 12);
-               SolidBrush brush = new SolidBrush(color);
-               PointF point = new PointF(0, 0);
-               graphics.DrawString(text, _font, brush, point);
+            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            Font _font = new Font("Arial", 12);
+            SolidBrush brush = new SolidBrush(color);
+            PointF point = new PointF(0, 0);
+            graphics.DrawString(text, _font, brush, point);
 
-               Draw(REW.Extract(image, 32), (int)v2.X, (int)v2.Y);
+            Draw(REW.Extract(image, 32), (int)v2.X, (int)v2.Y);
          }
       }
       public virtual void DrawString(string font, string text, Rectangle rectangle, Color color)
@@ -329,13 +329,13 @@ namespace FoundationR.Rew
          Bitmap image = new Bitmap(width, height);
          using (Graphics graphics = Graphics.FromImage(image))
          {
-               graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-               Font _font = new Font("Arial", 12);
-               SolidBrush brush = new SolidBrush(Color.White);
-               PointF point = new PointF(0, 0);
-               graphics.DrawString(text, _font, brush, point);
+            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            Font _font = new Font("Arial", 12);
+            SolidBrush brush = new SolidBrush(Color.White);
+            PointF point = new PointF(0, 0);
+            graphics.DrawString(text, _font, brush, point);
 
-               Draw(REW.Extract(image, 32), rectangle.X, rectangle.Y, color);
+            Draw(REW.Extract(image, 32), rectangle.X, rectangle.Y, color);
          }
       }
       public virtual void DrawString(string font, string text, int x, int y, int width, int height, Color color)
@@ -343,13 +343,13 @@ namespace FoundationR.Rew
          Bitmap image = new Bitmap(width, height);
          using (Graphics graphics = Graphics.FromImage(image))
          {
-               graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-               Font _font = new Font("Arial", 12);
-               SolidBrush brush = new SolidBrush(Color.White);
-               PointF point = new PointF(0, 0);
-               graphics.DrawString(text, _font, brush, point);
+            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            Font _font = new Font("Arial", 12);
+            SolidBrush brush = new SolidBrush(Color.White);
+            PointF point = new PointF(0, 0);
+            graphics.DrawString(text, _font, brush, point);
 
-               Draw(REW.Extract(image, 32), x, y, color);
+            Draw(REW.Extract(image, 32), x, y, color);
          }
       }
         
@@ -357,42 +357,42 @@ namespace FoundationR.Rew
       {
          switch (type)
          {
-               case RenderOption.GDI:
-                  BitmapInfoHeader bmih = new BitmapInfoHeader()
-                  {
-                     Size = 40,
-                     Width = RewBatch.width,
-                     Height = RewBatch.height,
-                     Planes = 1,
-                     BitCount = 32,
-                     Compression = (uint)BitmapCompressionMode.BI_BITFIELDS,
-                     SizeImage = (uint)(RewBatch.width * RewBatch.height * (BitsPerPixel / 8)),
-                     XPelsPerMeter = 96,
-                     YPelsPerMeter = 96,
-                     RedMask = 0x00FF0000,
-                     GreenMask = 0x0000FF00,
-                     BlueMask = 0x000000FF,
-                     AlphaMask = 0xFF000000,
-                     CSType = BitConverter.ToUInt32(new byte[] { 32, 110, 106, 87 }, 0)
-                  };
-                  GCHandle h = GCHandle.Alloc(bmih, GCHandleType.Pinned);
-                  GCHandle h2 = GCHandle.Alloc(FlipVertically(backBuffer, Viewport.Width, Viewport.Height), GCHandleType.Pinned);
-                  SetDIBitsToDevice(handle, 0, 0, RewBatch.width, RewBatch.height, 0, 0, 0, RewBatch.height, h2.AddrOfPinnedObject(), h.AddrOfPinnedObject(), 0);
-                  h.Free();
-                  h2.Free();
-                  ReleaseDC(IntPtr.Zero, handle);
-                  goto default;
-               case RenderOption.Direct2D:
-                  Direct2D_End();
-                  goto default;
-               case RenderOption.Both:
-                  Direct2D_Render(backBuffer, (uint)Viewport.Width, (uint)Viewport.Height);
-                  Direct2D_End();
-                  goto default;
-               case RenderOption.None:
-               default:
-                  backBuffer = null;
-                  break;
+            case RenderOption.GDI:
+               BitmapInfoHeader bmih = new BitmapInfoHeader()
+               {
+                  Size = 40,
+                  Width = RewBatch.width,
+                  Height = RewBatch.height,
+                  Planes = 1,
+                  BitCount = 32,
+                  Compression = (uint)BitmapCompressionMode.BI_BITFIELDS,
+                  SizeImage = (uint)(RewBatch.width * RewBatch.height * (BitsPerPixel / 8)),
+                  XPelsPerMeter = 96,
+                  YPelsPerMeter = 96,
+                  RedMask = 0x00FF0000,
+                  GreenMask = 0x0000FF00,
+                  BlueMask = 0x000000FF,
+                  AlphaMask = 0xFF000000,
+                  CSType = BitConverter.ToUInt32(new byte[] { 32, 110, 106, 87 }, 0)
+               };
+               GCHandle h = GCHandle.Alloc(bmih, GCHandleType.Pinned);
+               GCHandle h2 = GCHandle.Alloc(FlipVertically(backBuffer, Viewport.Width, Viewport.Height), GCHandleType.Pinned);
+               SetDIBitsToDevice(handle, 0, 0, RewBatch.width, RewBatch.height, 0, 0, 0, RewBatch.height, h2.AddrOfPinnedObject(), h.AddrOfPinnedObject(), 0);
+               h.Free();
+               h2.Free();
+               ReleaseDC(IntPtr.Zero, handle);
+               goto default;
+            case RenderOption.Direct2D:
+               Direct2D_End();
+               goto default;
+            case RenderOption.Both:
+               Direct2D_Render(backBuffer, (uint)Viewport.Width, (uint)Viewport.Height);
+               Direct2D_End();
+               goto default;
+            case RenderOption.None:
+            default:
+               backBuffer = null;
+               break;
          }
       }
 
@@ -400,11 +400,11 @@ namespace FoundationR.Rew
       {
          if (X + imageWidth > backBufferWidth)
          {
-               imageWidth = backBufferWidth - X;
+            imageWidth = backBufferWidth - X;
          }
          if (Y + imageHeight > backBufferHeight)
          {
-               imageHeight = backBufferHeight - Y;
+            imageHeight = backBufferHeight - Y;
          }
          return (imageWidth, imageHeight);
       }
@@ -423,19 +423,19 @@ namespace FoundationR.Rew
 
          if (cropWidth <= 0 || cropHeight <= 0)
          {
-               return null;
+            return null;
          }
          byte[] croppedImage = new byte[newWidth * newHeight * 4];
          for (int i = 0; i < cropHeight; i++)
          {
-               try
-               { 
-                  Array.Copy(image, i * width * 4, croppedImage, i * newWidth * 4, newWidth * 4);
-               }
-               catch
-               {
-                  newWidth--;
-               }
+            try
+            { 
+               Array.Copy(image, i * width * 4, croppedImage, i * newWidth * 4, newWidth * 4);
+            }
+            catch
+            {
+               newWidth--;
+            }
          }
          return croppedImage;
       }
@@ -443,7 +443,7 @@ namespace FoundationR.Rew
       bool Culling(int x, int y, int imageWidth, int imageHeight)
       {
          if (x < 0 || y < 0 || x + imageWidth >= Viewport.Width || y + imageHeight >= Viewport.Height)
-               return true;
+            return true;
          return false;
       }
       public virtual void CompositeImage(byte[] buffer, int bufferWidth, int bufferHeight, byte[] image, int imageWidth, int imageHeight, int x, int y, int origX, int origY, bool text = false)
@@ -453,46 +453,46 @@ namespace FoundationR.Rew
          return;
          Parallel.For(0, imageHeight, i =>
          {
-               for (int j = 0; j < imageWidth; j++)
+            for (int j = 0; j < imageWidth; j++)
+            {
+               int index = Math.Min((i * imageWidth + j) * 4, image.Length - 4);
+               int bufferIndex = ((y + i) * bufferWidth + (x + j)) * 4;
+
+               if (bufferIndex < 0 || bufferIndex >= buffer.Length - 4)
+                  return;
+               Pixel back = new Pixel(
+                  buffer[bufferIndex + 3],
+                  buffer[bufferIndex + 2],
+                  buffer[bufferIndex + 1],
+                  buffer[bufferIndex]
+               );
+               Pixel fore = new Pixel(
+                  image[index],
+                  image[index + 1],
+                  image[index + 2],
+                  image[index + 3]
+               );
+               if (back.A == 0 && fore.A == 0)
+                  continue;
+
+               if (fore.A < 255 && !text)
                {
-                  int index = Math.Min((i * imageWidth + j) * 4, image.Length - 4);
-                  int bufferIndex = ((y + i) * bufferWidth + (x + j)) * 4;
+                  Color blend = fore.color.Blend(back.color, 0.15d);
+                  buffer[bufferIndex] = blend.B;
+                  buffer[bufferIndex + 1] = blend.G;
+                  buffer[bufferIndex + 2] = blend.R;
 
-                  if (bufferIndex < 0 || bufferIndex >= buffer.Length - 4)
-                     return;
-                  Pixel back = new Pixel(
-                     buffer[bufferIndex + 3],
-                     buffer[bufferIndex + 2],
-                     buffer[bufferIndex + 1],
-                     buffer[bufferIndex]
-                  );
-                  Pixel fore = new Pixel(
-                     image[index],
-                     image[index + 1],
-                     image[index + 2],
-                     image[index + 3]
-                  );
-                  if (back.A == 0 && fore.A == 0)
-                     continue;
-
-                  if (fore.A < 255 && !text)
-                  {
-                     Color blend = fore.color.Blend(back.color, 0.15d);
-                     buffer[bufferIndex] = blend.B;
-                     buffer[bufferIndex + 1] = blend.G;
-                     buffer[bufferIndex + 2] = blend.R;
-
-                     if (back.A == 255) buffer[bufferIndex + 3] = 255;
-                     else buffer[bufferIndex + 3] = blend.A;
-                  }
-                  else
-                  {
-                     buffer[bufferIndex] = fore.color.B;
-                     buffer[bufferIndex + 1] = fore.color.G;
-                     buffer[bufferIndex + 2] = fore.color.R;
-                     buffer[bufferIndex + 3] = 255;
-                  }
+                  if (back.A == 255) buffer[bufferIndex + 3] = 255;
+                  else buffer[bufferIndex + 3] = blend.A;
                }
+               else
+               {
+                  buffer[bufferIndex] = fore.color.B;
+                  buffer[bufferIndex + 1] = fore.color.G;
+                  buffer[bufferIndex + 2] = fore.color.R;
+                  buffer[bufferIndex + 3] = 255;
+               }
+            }
          });
       }
       public byte[] FlipVertically(byte[] pixels, int width, int height)
