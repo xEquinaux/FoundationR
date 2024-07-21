@@ -152,7 +152,7 @@ namespace FoundationR.Rew
 		internal static int width, height;
 		private static int oldWidth, oldHeight;
 		public virtual short BitsPerPixel { get; protected set; }
-		internal static byte[] backBuffer;
+		public static byte[] backBuffer;
 		IntPtr hdc;
 		public static Viewport Viewport
 		{
@@ -900,7 +900,7 @@ namespace FoundationR.Rew
 				this.B = A;
 			}
 			else
-			{ 
+			{
 				this.A = A;
 				this.R = R;
 				this.G = G;
