@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FoundationR", "FoundationR.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Foundation_GameTemplate", "..\Foundation_GameTemplate\Foundation_GameTemplate.csproj", "{256EA174-50EE-46A3-9EA4-3EFDC4BF23B4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonoGame.Framework.WindowsDX", "..\MonoGame\MonoGame.Framework\MonoGame.Framework.WindowsDX.csproj", "{15CC4364-B24A-4E39-9EB6-25AB090CDE51}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{256EA174-50EE-46A3-9EA4-3EFDC4BF23B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{256EA174-50EE-46A3-9EA4-3EFDC4BF23B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{256EA174-50EE-46A3-9EA4-3EFDC4BF23B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{15CC4364-B24A-4E39-9EB6-25AB090CDE51}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15CC4364-B24A-4E39-9EB6-25AB090CDE51}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15CC4364-B24A-4E39-9EB6-25AB090CDE51}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15CC4364-B24A-4E39-9EB6-25AB090CDE51}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
