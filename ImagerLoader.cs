@@ -484,43 +484,61 @@ namespace FoundationR.Rew
 
 					if (bufferIndex < 0 || bufferIndex + 3 >= buffer.Length - 4)
 						return;
-					Pixel back = new Pixel(
-						buffer[bufferIndex],
-						buffer[bufferIndex + 1],
-						buffer[bufferIndex + 2],
-						buffer[bufferIndex + 3]		
-					);
-					Pixel fore = new Pixel(
-						image[index],
-						image[index + 1],
-						image[index + 2],
-						image[index + 3]
-					);
-					if (back.A == 0 && fore.A == 0)
-						continue;
 
-					//if (fore.A < 255 && !text)
-					//{
-					//	Color blend = fore.color.Blend(back.color, 0.15d);
-					//	buffer[bufferIndex] = blend.R;
-					//	buffer[bufferIndex + 1] = blend.B;
-					//	buffer[bufferIndex + 2] = blend.G;
+					byte baseA = buffer[bufferIndex];
+					byte baseR = buffer[bufferIndex + 1];
+					byte baseG = buffer[bufferIndex + 2];
+					byte baseB = buffer[bufferIndex + 3];
 
-					//	if (back.A == 255) 
-					//	buffer[bufferIndex + 3] = 255;
-					//	else 
-					//	buffer[bufferIndex + 3] = blend.A;
-					//}
-					//else
-					{
-						buffer[bufferIndex + 1] = fore.color.R;
-						buffer[bufferIndex + 2] = fore.color.G;
-						buffer[bufferIndex + 3] = fore.color.B;
-						buffer[bufferIndex + 3] = 255;
-					}
+					byte overlayA = image[index];
+					byte overlayR = image[index + 1];
+					byte overlayG = image[index + 2];
+					byte overlayB = image[index + 3];
+
+					float alpha = overlayA / 255f;
+					byte resultA = (byte)(baseA + overlayA * (1 - baseA / 255f));
+					byte resultR = (byte)(baseR * (1 - alpha) + overlayR * alpha);
+					byte resultG = (byte)(baseG * (1 - alpha) + overlayG * alpha);
+					byte resultB = (byte)(baseB * (1 - alpha) + overlayB * alpha);
+
+					buffer[bufferIndex] = resultA;
+					buffer[bufferIndex + 1] = resultR;
+					buffer[bufferIndex + 2] = resultG;
+					buffer[bufferIndex + 3] = resultB;
 				}
 			});
 		}
+		public static byte[] CompositeARGB(byte[] baseArray, byte[] overlayArray)
+		{
+			byte[] resultArray = backBuffer;
+
+			for (int i = 0; i < baseArray.Length; i += 4)
+			{
+				byte baseA = baseArray[i];
+				byte baseR = baseArray[i + 1];
+				byte baseG = baseArray[i + 2];
+				byte baseB = baseArray[i + 3];
+
+				byte overlayA = overlayArray[i];
+				byte overlayR = overlayArray[i + 1];
+				byte overlayG = overlayArray[i + 2];
+				byte overlayB = overlayArray[i + 3];
+
+				float alpha = overlayA / 255f;
+				byte resultA = (byte)(baseA + overlayA * (1 - baseA / 255f));
+				byte resultR = (byte)(baseR * (1 - alpha) + overlayR * alpha);
+				byte resultG = (byte)(baseG * (1 - alpha) + overlayG * alpha);
+				byte resultB = (byte)(baseB * (1 - alpha) + overlayB * alpha);
+
+				resultArray[i] = resultA;
+				resultArray[i + 1] = resultR;
+				resultArray[i + 2] = resultG;
+				resultArray[i + 3] = resultB;
+			}
+
+			return resultArray;
+		}
+
 		public byte[] FlipVertically(byte[] pixels, int width, int height)
 		{
 			int bytesPerPixel = 4;
@@ -770,11 +788,11 @@ namespace FoundationR.Rew
 					Pixel pixel = default;
 					if (NumChannels == 4)
 					{
-						pixel = new Pixel(c.B, c.G, c.R, c.A);
+						pixel = new Pixel(c.A, c.R, c.G, c.B);
 					}
 					else
 					{
-						pixel = new Pixel(c.B, c.G, c.R);
+						pixel = new Pixel(c.A, c.G, c.B);
 					}
 					data.AppendPixel(num * NumChannels + HeaderOffset, pixel);
 					pixel = default;
@@ -839,6 +857,34 @@ namespace FoundationR.Rew
 				pixel = default;
 			}
 		}
+		public virtual void ReadData(BinaryReader br, bool argb)
+		{
+			Point16 size = br.ReadPoint16();
+			int len = br.ReadInt32();
+			BitsPerPixel = br.ReadInt16();
+			data = new byte[len - HeaderOffset];
+			data.AddHeader(size, len, BitsPerPixel);
+			Width = size.X;
+			Height = size.Y;
+			for (int i = HeaderOffset; i < data.Length - NumChannels; i += NumChannels)
+			{
+				Pixel pixel = br.ReadPixel();
+				if (argb)
+				{
+					byte a = pixel.A, 
+						  r = pixel.R, 
+						  g = pixel.G, 
+						  b = pixel.B;
+					pixel.A = a;
+					pixel.R = b;
+					pixel.G = g;
+					pixel.B = r;
+				}
+				pixel.hasAlpha = NumChannels == 4;
+				data.AppendPixel(i, pixel);
+				pixel = default;
+			}
+		}
 		public virtual Pixel GetPixel(int x, int y)
 		{
 			int i = this.Width;
@@ -875,16 +921,16 @@ namespace FoundationR.Rew
 			}
 			if (NumChannels == 4)
 			{
-				data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset)] = color.B;      // A
-				data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset + 1)] = color.G;  // R
-				data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset + 2)] = color.R;  // G
-				data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset + 3)] = color.A;  // B
+				data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset)] = color.A;      // B
+				data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset + 1)] = color.R;  // G
+				data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset + 2)] = color.G;  // R
+				data[Math.Min(data.Length - 1, whoAmI * 4 + HeaderOffset + 3)] = color.B;  // A
 			}
 			else
 			{
-				data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset)] = color.B;      // R
+				data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset)] = color.R;      // B
 				data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset + 1)] = color.G;  // G
-				data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset + 2)] = color.R;  // B
+				data[Math.Min(data.Length - 1, whoAmI * 3 + HeaderOffset + 2)] = color.B;  // R
 			}
 		}
 		public virtual byte[] Animate(int frame, int frameHeight, int width)
@@ -919,8 +965,8 @@ namespace FoundationR.Rew
 				this.B = B;
 			}
 			this.hasAlpha = true;
-		}               //R       G       B
-		public Pixel(byte B, byte G, byte R)
+		}               //B       G       R
+		public Pixel(byte R, byte G, byte B)
 		{
 			//  Flipped; requires drawing 24bppBGR
 			this.R = R;
@@ -966,13 +1012,13 @@ namespace FoundationR.Rew
 			G = color.G; //R
 			B = color.B; //A
 		}
-		public byte A = 255, R, G, B;                 //A  R  G  B                  R  G  B
-		public byte[] Buffer => hasAlpha ? new byte[] { B, G, R, A } : new byte[] { B, G, R };
-													//  A  R  G  B
+		public byte A = 255, R, G, B;                 //B  G  R  A                  R  G  B
+		public byte[] Buffer => hasAlpha ? new byte[] { A, R, G, B } : new byte[] { R, G, B };
+		//  A  R  G  B
 		public Color color => Color.FromArgb(B, G, R, A);
 		public override string ToString()
 		{
-			return $"\"BGRA=({B}, {G}, {R}, {A})\"";
+			return $"\"ARGB=({A}, {R}, {G}, {B})\"";
 		}
 	}
 	public struct Point16
@@ -1142,16 +1188,16 @@ namespace FoundationR.Ext
 		{
 			try
 			{
-				byte B = r.ReadByte();
-				byte G = r.ReadByte();
-				byte R = r.ReadByte();
 				byte A = r.ReadByte();
+				byte R = r.ReadByte();
+				byte G = r.ReadByte();
+				byte B = r.ReadByte();
 				Pixel i = new Pixel
 				(
-					B, // R
-					G, // G
-					R, // B
-					A  // A
+					A, // B
+					R, // G
+					G, // R
+					B  // A
 				);
 				return i;
 			}
@@ -1164,16 +1210,16 @@ namespace FoundationR.Ext
 		{
 			if (i.hasAlpha)
 			{
-				array[index] = i.B;     // A
-				array[index + 1] = i.G; // R
-				array[index + 2] = i.R; // G
-				array[index + 3] = i.A; // B
+				array[index] = i.A;     // B
+				array[index + 1] = i.R; // G
+				array[index + 2] = i.G; // R
+				array[index + 3] = i.B; // A
 			}
 			else
 			{
-				array[index] = i.B;     // R
+				array[index] = i.R;     // B
 				array[index + 1] = i.G; // G
-				array[index + 2] = i.R; // B
+				array[index + 2] = i.B; // R
 			}
 			return array;
 		}
@@ -1186,13 +1232,13 @@ namespace FoundationR.Ext
 					case RenderOption.None:
 					case RenderOption.Both:
 					case RenderOption.GDI:     // CPU compositing requires:
-						array[index]     = i.R; // R, 
-						array[index + 1] = i.G; // G, 
-						array[index + 2] = i.B; // B, 
-						array[index + 3] = i.A; // A
+						array[index] = i.A; // R, 
+						array[index + 1] = i.R; // G, 
+						array[index + 2] = i.G; // B, 
+						array[index + 3] = i.B; // A
 						break;
 					case RenderOption.Direct2D:
-						array[index]     = i.A; // A, 
+						array[index] = i.A; // A, 
 						array[index + 1] = i.R; // R, 
 						array[index + 2] = i.G; // G, 
 						array[index + 3] = i.B; // B
@@ -1206,12 +1252,12 @@ namespace FoundationR.Ext
 					case RenderOption.None:
 					case RenderOption.Both:
 					case RenderOption.GDI:     // CPU compositing requires:
-						array[index] = i.B;     // R, 
+						array[index] = i.R;     // B, 
 						array[index + 1] = i.G; // G, 
-						array[index + 2] = i.R; // B 
+						array[index + 2] = i.B; // R 
 						break;
 					case RenderOption.Direct2D:
-						array[index] = i.R;		// R, 
+						array[index] = i.R;     // R, 
 						array[index + 1] = i.G; // G, 
 						array[index + 2] = i.B; // B
 						break;
@@ -1249,17 +1295,17 @@ namespace FoundationR.Ext
 					if (_two.A < 255)
 					{
 						Color blend = _two.color.Blend(_one.color, 0.15d);
-						input[whoAmI]     = blend.B; // A
-						input[whoAmI + 1] = blend.G; // R
-						input[whoAmI + 2] = blend.R; // G
-						input[whoAmI + 3] = blend.A; // B
+						input[whoAmI] = blend.A;	  // B
+						input[whoAmI + 1] = blend.R; // R
+						input[whoAmI + 2] = blend.G; // R
+						input[whoAmI + 3] = blend.B; // A
 					}
 					else
 					{
-						input[whoAmI]     = _two.color.B; // 255
-						input[whoAmI + 1] = _two.color.G; // R
-						input[whoAmI + 2] = _two.color.R; // G
-						input[whoAmI + 3] = 255;          // B
+						input[whoAmI] = 255;					 // B
+						input[whoAmI + 1] = _two.color.R; // G
+						input[whoAmI + 2] = _two.color.G; // R
+						input[whoAmI + 3] = _two.color.B; // 255
 					}
 				}
 			});
@@ -1319,10 +1365,10 @@ namespace FoundationR.Ext
 		}
 		public static Pixel PreMultiply(this Pixel pixel)
 		{
+			byte a = pixel.A;
 			byte r = pixel.R;
 			byte g = pixel.G;
 			byte b = pixel.B;
-			byte a = pixel.A;
 			pixel.R = (byte)((r * a) / 255);
 			pixel.G = (byte)((g * a) / 255);
 			pixel.B = (byte)((b * a) / 255);
