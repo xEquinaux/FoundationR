@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Foundation_GameTemplate", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonoGame.Framework.WindowsDX", "..\MonoGame\MonoGame.Framework\MonoGame.Framework.WindowsDX.csproj", "{15CC4364-B24A-4E39-9EB6-25AB090CDE51}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "cotf", "..\cotf-remix\cotf.csproj", "{5D69B319-A3D1-457E-A2CF-63865BEB9DC4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{15CC4364-B24A-4E39-9EB6-25AB090CDE51}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{15CC4364-B24A-4E39-9EB6-25AB090CDE51}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{15CC4364-B24A-4E39-9EB6-25AB090CDE51}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D69B319-A3D1-457E-A2CF-63865BEB9DC4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D69B319-A3D1-457E-A2CF-63865BEB9DC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D69B319-A3D1-457E-A2CF-63865BEB9DC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D69B319-A3D1-457E-A2CF-63865BEB9DC4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
