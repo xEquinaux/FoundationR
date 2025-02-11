@@ -51,10 +51,12 @@ namespace FoundationR
         public virtual void RegisterHooks()
         {
         }
-        internal void Run(Surface window)
+        internal void Run(Surface window, bool noBorder = false)
         {
             this.RegisterHooks();
             window.form = new SurfaceForm(window);
+            if (noBorder)
+			    window.form.FormBorderStyle = FormBorderStyle.None;
             _rewBatch = new RewBatch(window.Width, window.Height, window.BitsPerPixel);
             LoadResourcesEvent?.Invoke();
             InitializeEvent?.Invoke(new InitializeArgs());
@@ -75,10 +77,10 @@ namespace FoundationR
                         taskDone = false;
                         DrawTime = watch1.Elapsed;
                         watch1.Restart();
-                        window.form?.Invoke(() =>
-                        {
-                            InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
-                        });
+                        //window.form?.Invoke(() =>
+                        //{
+                        //    InputEvent?.Invoke(new InputArgs() { mouse = window.form.PointToClient(System.Windows.Forms.Cursor.Position) });
+                        //});
                         {
                             InternalBegin(window);
                             if ((bool)ResizeEvent?.Invoke())
@@ -109,7 +111,13 @@ namespace FoundationR
             }
             window.form.ShowDialog();
         }
-        bool UpdateLimiter()
+
+		public virtual void FormClosed(object sender, FormClosedEventArgs e)
+		{
+            Close();
+		}
+
+		bool UpdateLimiter()
         {
             double deltaTime = 0; // Initialize the time accumulator
             double accumulator = 0; // Accumulated time

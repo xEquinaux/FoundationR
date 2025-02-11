@@ -12,7 +12,8 @@ namespace FoundationR
         WPFImage,
         [Obsolete("Legacy surface type")]
         WindowHandle,
-        WindowHandle_Loop
+        WindowHandle_Loop,
+        WindowHandle_Loop_NoBorder
     }
     public partial class Foundation
     {
@@ -27,6 +28,9 @@ namespace FoundationR
                     throw new SurfaceTypeException();
                 case SurfaceType.WindowHandle_Loop:
                     Run(surface);
+                    break;
+                case SurfaceType.WindowHandle_Loop_NoBorder:
+                    Run(surface, true);
                     break;
             }
         }
