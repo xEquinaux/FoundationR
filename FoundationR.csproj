@@ -23,6 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="System.Runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="Textures\background.rew">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
